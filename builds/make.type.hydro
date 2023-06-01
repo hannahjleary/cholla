@@ -7,8 +7,8 @@ DFLAGS    += -DPPMC
 DFLAGS    += -DHLLC
 
 # Integrator
-DFLAGS    += -DSIMPLE
-#DFLAGS    += -DVL
+#DFLAGS    += -DSIMPLE
+DFLAGS    += -DVL
 
 # Apply a density and temperature floor
 DFLAGS    += -DDENSITY_FLOOR
@@ -18,12 +18,15 @@ DFLAGS    += -DTEMPERATURE_FLOOR
 #DFLAGS    += -DDE
 
 # Apply cooling on the GPU from precomputed tables
-#DFLAGS    += -DCOOLING_GPU
+DFLAGS    += -DCOOLING_GPU
 
 # Measure the Timing of the different stages
 #DFLAGS    += -DCPU_TIME
 
 # Select output format
-# Can also add -DSLICES and -DPROJECTIONS
-OUTPUT    ?=  -DOUTPUT -DHDF5
+# Can also add -DSLICES and -DPROJECTION
+OUTPUT    ?=  -DOUTPUT -DHDF5 
 DFLAGS    += $(OUTPUT)
+
+DFLAGS    += -DSLICES
+DFLAGS    += -DPROJECTION
