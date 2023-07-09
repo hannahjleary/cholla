@@ -1,19 +1,17 @@
 #
-# Parameter File for 3D Ryu & Jones MHD shock tube 4d.
-# Citation: Ryu & Jones 1995 "Numerical Magnetohydrodynamics in Astrophysics:
-# Algorithms and Tests for One-Dimensional Flow"
-#
-# Note: There are many shock tubes in this paper. This settings file is
-# specifically for shock tube 4d
+# Parameter File for 3D Dai & Woodward MHD shock tube
+# Citation: Dai & Woodward 1998 "On The Diverrgence-Free Condition and
+# Conservation Laws in Numerical Simulations for Supersonic Magnetohydrodynamic
+# Flows"
 #
 
 ################################################
 # number of grid cells in the x dimension
-nx=32
+nx=64
 # number of grid cells in the y dimension
-ny=32
+ny=64
 # number of grid cells in the z dimension
-nz=32
+nz=64
 # final output time
 tout=0.2
 # time interval for output
@@ -51,7 +49,7 @@ vz_l=0.5
 # pressure of left state
 P_l=0.95
 # Magnetic field of the left state
-Bx_l=7.0898154036220635
+Bx_l=0.5641895835477563
 By_l=1.0155412503859613
 Bz_l=0.5641895835477563
 
@@ -64,7 +62,7 @@ vz_r=0.0
 # pressure of right state
 P_r=1.0
 # Magnetic field of the right state
-Bx_r=7.0898154036220635
+Bx_r=0.5641895835477563
 By_r=1.1283791670955126
 Bz_r=0.5641895835477563
 
@@ -72,3 +70,4 @@ Bz_r=0.5641895835477563
 diaph=0.5
 # value of gamma
 gamma=1.6666666666666667
+
