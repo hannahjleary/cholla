@@ -23,10 +23,10 @@
 #include "../utils/math_utilities.h"
 #include "../utils/mhd_utilities.h"
 
-/*! \fn void Set_Initial_Conditions(parameters P)
+/*! \fn void Set_Initial_Conditions(Parameters P )
  *  \brief Set the initial conditions based on info in the parameters structure.
  */
-void Grid3D::Set_Initial_Conditions(parameters P)
+void Grid3D::Set_Initial_Conditions(Parameters P)
 {
   Set_Domain_Properties(P);
   Set_Gammas(P.gamma);
@@ -100,13 +100,13 @@ void Grid3D::Set_Initial_Conditions(parameters P)
   }
 
   if (C.device != NULL) {
-    CudaSafeCall(cudaMemcpy(C.device, C.density, H.n_fields * H.n_cells * sizeof(Real), cudaMemcpyHostToDevice));
+    GPU_Error_Check(cudaMemcpy(C.device, C.density, H.n_fields * H.n_cells * sizeof(Real), cudaMemcpyHostToDevice));
   }
 }
 
-/*! \fn void Set_Domain_Properties(struct parameters P)
+/*! \fn void Set_Domain_Properties(struct Parameters P)
  *  \brief Set local domain properties */
-void Grid3D::Set_Domain_Properties(struct parameters P)
+void Grid3D::Set_Domain_Properties(struct Parameters P)
 {
   // Global Boundary Coordinates
   H.xbound = P.xmin;
@@ -177,7 +177,7 @@ void Grid3D::Set_Domain_Properties(struct parameters P)
 
 /*! \fn void Constant(Real rho, Real vx, Real vy, Real vz, Real P, Real Bx, Real
  * By, Real Bz) \brief Constant gas properties. */
-void Grid3D::Constant(parameters const &P)
+void Grid3D::Constant(Parameters const &P)
 {
   int i, j, k, id;
   int istart, jstart, kstart, iend, jend, kend;
@@ -241,7 +241,7 @@ void Grid3D::Constant(parameters const &P)
 
 /*! \fn void Sound_Wave(Real rho, Real vx, Real vy, Real vz, Real P, Real A)
  *  \brief Sine wave perturbation. */
-void Grid3D::Sound_Wave(parameters const &P)
+void Grid3D::Sound_Wave(Parameters const &P)
 {
   int i, j, k, id;
   int istart, jstart, kstart, iend, jend, kend;
@@ -299,45 +299,132 @@ void Grid3D::Sound_Wave(parameters const &P)
 
 /*! \fn void Linear_Wave(Real rho, Real vx, Real vy, Real vz, Real P, Real A)
  *  \brief Sine wave perturbation. */
-void Grid3D::Linear_Wave(parameters const &P)
+void Grid3D::Linear_Wave(Parameters const &P)
 {
-  auto [stagger, junk1, junk2] = math_utils::rotateCoords<Real>(H.dx / 2, H.dy / 2, H.dz / 2, P.pitch, P.yaw);
+  // Compute any test parameters needed
+  // ==================================
+  // Angles
+  Real const sin_yaw   = std::sin(P.yaw);
+  Real const cos_yaw   = std::cos(P.yaw);
+  Real const sin_pitch = std::sin(P.pitch);
+  Real const cos_pitch = std::cos(P.pitch);
+
+  Real const wavenumber = 2.0 * M_PI / P.wave_length;  // the angular wave number k
+
+#ifdef MHD
+  // TODO: This method of setting the magnetic fields via the vector potential should work but instead leads to small
+  // TODO: errors in the magnetic field that tend to amplify over time until the solution diverges. I don't know why
+  // TODO: that is the case and can't figure out the reason. Without this we can't run linear waves at an angle to the
+  // TODO: grid.
+  // // Compute the vector potential
+  // // ============================
+  // std::vector<Real> vectorPotential(3 * H.n_cells, 0);
+
+  // // lambda function for computing the vector potential
+  // auto Compute_Vector_Potential = [&](Real const &x_loc, Real const &y_loc, Real const &z_loc) {
+  //   // The "_rot" variables are the rotated version
+  //   Real const x_rot = x_loc * cos_pitch * cos_yaw + y_loc * cos_pitch * sin_yaw + z_loc * sin_pitch;
+  //   Real const y_rot = -x_loc * sin_yaw + y_loc * cos_yaw;
+
+  //   Real const a_y = P.Bz * x_rot - (P.A * P.rEigenVec_Bz / wavenumber) * std::cos(wavenumber * x_rot);
+  //   Real const a_z = -P.By * x_rot + (P.A * P.rEigenVec_By / wavenumber) * std::cos(wavenumber * x_rot) + P.Bx *
+  //   y_rot;
+
+  //   return std::make_pair(a_y, a_z);
+  // };
+
+  // for (size_t k = 0; k < H.nz; k++) {
+  //   for (size_t j = 0; j < H.ny; j++) {
+  //     for (size_t i = 0; i < H.nx; i++) {
+  //       // Get cell index
+  //       size_t const id = cuda_utilities::compute1DIndex(i, j, k, H.nx, H.ny);
+
+  //       Real x, y, z;
+  //       Get_Position(i, j, k, &x, &y, &z);
+
+  //       auto vectorPot                         = Compute_Vector_Potential(x, y + H.dy / 2., z + H.dz / 2.);
+  //       vectorPotential.at(id + 0 * H.n_cells) = -vectorPot.first * sin_yaw - vectorPot.second * sin_pitch * cos_yaw;
+
+  //       vectorPot                              = Compute_Vector_Potential(x + H.dx / 2., y, z + H.dz / 2.);
+  //       vectorPotential.at(id + 1 * H.n_cells) = vectorPot.first * cos_yaw - vectorPot.second * sin_pitch * sin_yaw;
+
+  //       vectorPot                              = Compute_Vector_Potential(x + H.dx / 2., y + H.dy / 2., z);
+  //       vectorPotential.at(id + 2 * H.n_cells) = vectorPot.second * cos_pitch;
+  //     }
+  //   }
+  // }
+
+  // // Compute the magnetic field from the vector potential
+  // // ====================================================
+  // mhd::utils::Init_Magnetic_Field_With_Vector_Potential(H, C, vectorPotential);
+
+  Real shift = H.dx;
+  size_t dir = 0;
+  if (sin_yaw == 1.0) {
+    shift = H.dy;
+    dir   = 1;
+  } else if (sin_pitch == 1.0) {
+    shift = H.dz;
+    dir   = 2;
+  }
 
   // set initial values of conserved variables
   for (int k = H.n_ghost; k < H.nz - H.n_ghost; k++) {
     for (int j = H.n_ghost; j < H.ny - H.n_ghost; j++) {
       for (int i = H.n_ghost; i < H.nx - H.n_ghost; i++) {
-        // Rotate the indices
-        auto [i_rot, j_rot, k_rot] = math_utils::rotateCoords<int>(i, j, k, P.pitch, P.yaw);
-
         // get cell index
-        int id = i + j * H.nx + k * H.nx * H.ny;
+        size_t const id = cuda_utilities::compute1DIndex(i, j, k, H.nx, H.ny);
 
         // get cell-centered position
         Real x_pos, y_pos, z_pos;
-        Get_Position(i_rot, j_rot, k_rot, &x_pos, &y_pos, &z_pos);
+        Get_Position(i, j, k, &x_pos, &y_pos, &z_pos);
+        Real const x_pos_rot = cos_pitch * (x_pos * cos_yaw + y_pos * sin_yaw) + z_pos * sin_pitch;
 
-        // set constant initial states. Note that hydro_utilities::Calc_Energy_Primitive computes the MHD energy if the
-        // MHD flag is turned on and the hydro energy if it isn't
-        Real sine_wave = std::sin(2.0 * M_PI * x_pos / P.wave_length);
+        Real const sine_x = std::sin(x_pos_rot * wavenumber);
 
-        C.density[id]    = P.rho;
-        C.momentum_x[id] = P.rho * P.vx;
-        C.momentum_y[id] = P.rho * P.vy;
-        C.momentum_z[id] = P.rho * P.vz;
-        C.Energy[id]     = hydro_utilities::Calc_Energy_Primitive(P.P, P.rho, P.vx, P.vy, P.vz, gama, P.Bx, P.By, P.Bz);
-        // add small-amplitude perturbations
-        C.density[id] += P.A * P.rEigenVec_rho * sine_wave;
-        C.momentum_x[id] += P.A * P.rEigenVec_MomentumX * sine_wave;
-        C.momentum_y[id] += P.A * P.rEigenVec_MomentumY * sine_wave;
-        C.momentum_z[id] += P.A * P.rEigenVec_MomentumZ * sine_wave;
-        C.Energy[id] += P.A * P.rEigenVec_E * sine_wave;
+        Real bx = P.Bx + P.A * P.rEigenVec_Bx * sine_x;
+        Real by = P.By + P.A * P.rEigenVec_By * sine_x;
+        Real bz = P.Bz + P.A * P.rEigenVec_Bz * sine_x;
 
+        C.magnetic_x[id] = bx * cos_pitch * cos_yaw - by * sin_yaw - bz * sin_pitch * cos_yaw;
+        C.magnetic_y[id] = bx * cos_pitch * sin_yaw + by * cos_yaw - bz * sin_pitch * sin_yaw;
+        C.magnetic_z[id] = bx * sin_pitch + bz * cos_pitch;
+      }
+    }
+  }
+#endif  // MHD
+
+  // Compute the hydro variables
+  // ===========================
+  for (size_t k = H.n_ghost - 1; k < H.nz - H.n_ghost; k++) {
+    for (size_t j = H.n_ghost - 1; j < H.ny - H.n_ghost; j++) {
+      for (size_t i = H.n_ghost - 1; i < H.nx - H.n_ghost; i++) {
+        // get cell index
+        size_t const id = cuda_utilities::compute1DIndex(i, j, k, H.nx, H.ny);
+
+        // get cell-centered position
+        Real x_pos, y_pos, z_pos;
+        Get_Position(i, j, k, &x_pos, &y_pos, &z_pos);
+        Real const x_pos_rot = cos_pitch * (x_pos * cos_yaw + y_pos * sin_yaw) + z_pos * sin_pitch;
+
+        Real const sine_x = std::sin(x_pos_rot * wavenumber);
+
+        // Density
+        C.density[id] = P.rho + P.A * P.rEigenVec_rho * sine_x;
+
+        // Momenta
+        Real mx = P.rho * P.vx + P.A * P.rEigenVec_MomentumX * sine_x;
+        Real my = P.A * P.rEigenVec_MomentumY * sine_x;
+        Real mz = P.A * P.rEigenVec_MomentumZ * sine_x;
+
+        C.momentum_x[id] = mx * cos_pitch * cos_yaw - my * sin_yaw - mz * sin_pitch * cos_yaw;
+        C.momentum_y[id] = mx * cos_pitch * sin_yaw + my * cos_yaw - mz * sin_pitch * sin_yaw;
+        C.momentum_z[id] = mx * sin_pitch + mz * cos_pitch;
+
+        // Energy
+        C.Energy[id] = P.P / (P.gamma - 1.0) + 0.5 * P.rho * P.vx * P.vx + P.A * sine_x * P.rEigenVec_E;
 #ifdef MHD
-        sine_wave        = std::sin(2.0 * M_PI * (x_pos + stagger));
-        C.magnetic_x[id] = P.Bx + P.A * P.rEigenVec_Bx * sine_wave;
-        C.magnetic_y[id] = P.By + P.A * P.rEigenVec_By * sine_wave;
-        C.magnetic_z[id] = P.Bz + P.A * P.rEigenVec_Bz * sine_wave;
+        C.Energy[id] += 0.5 * (P.Bx * P.Bx + P.By * P.By + P.Bz * P.Bz);
 #endif  // MHD
       }
     }
@@ -347,7 +434,7 @@ void Grid3D::Linear_Wave(parameters const &P)
 /*! \fn void Square_Wave(Real rho, Real vx, Real vy, Real vz, Real P, Real A)
  *  \brief Square wave density perturbation with amplitude A*rho in pressure
  * equilibrium. */
-void Grid3D::Square_Wave(parameters const &P)
+void Grid3D::Square_Wave(Parameters const &P)
 {
   int i, j, k, id;
   int istart, jstart, kstart, iend, jend, kend;
@@ -419,20 +506,20 @@ void Grid3D::Square_Wave(parameters const &P)
  Bx_l, Real By_l, Real Bz_l, Real rho_r, Real vx_r, Real vy_r, Real vz_r, Real
  P_r, Real Bx_r, Real By_r, Real Bz_r, Real diaph)
  *  \brief Initialize the grid with a Riemann problem. */
-void Grid3D::Riemann(parameters const &P)
+void Grid3D::Riemann(Parameters const &P)
 {
-  size_t const istart = H.n_ghost;
+  size_t const istart = H.n_ghost - 1;
   size_t const iend   = H.nx - H.n_ghost;
   size_t jstart, kstart, jend, kend;
   if (H.ny > 1) {
-    jstart = H.n_ghost;
+    jstart = H.n_ghost - 1;
     jend   = H.ny - H.n_ghost;
   } else {
     jstart = 0;
     jend   = H.ny;
   }
   if (H.nz > 1) {
-    kstart = H.n_ghost;
+    kstart = H.n_ghost - 1;
     kend   = H.nz - H.n_ghost;
   } else {
     kstart = 0;
@@ -440,9 +527,9 @@ void Grid3D::Riemann(parameters const &P)
   }
 
   // set initial values of conserved variables
-  for (size_t k = kstart - 1; k < kend; k++) {
-    for (size_t j = jstart - 1; j < jend; j++) {
-      for (size_t i = istart - 1; i < iend; i++) {
+  for (size_t k = kstart; k < kend; k++) {
+    for (size_t j = jstart; j < jend; j++) {
+      for (size_t i = istart; i < iend; i++) {
         // get cell index
         size_t const id = i + j * H.nx + k * H.nx * H.ny;
 
@@ -453,6 +540,7 @@ void Grid3D::Riemann(parameters const &P)
 #ifdef MHD
         // Set the magnetic field including the rightmost ghost cell on the
         // left side which is really the left face of the first grid cell
+        // WARNING: Only correct in 3-D
         if (x_pos < P.diaph) {
           C.magnetic_x[id] = P.Bx_l;
           C.magnetic_y[id] = P.By_l;
@@ -684,8 +772,8 @@ void Grid3D::KH_res_ind()
 
   d1 = 100.0;  // inner density
   d2 = 1.0;    // outer density
-  v1 = 10.5;   // inner velocity
-  v2 = 9.5;    // outer velocity
+  v1 = 0.5;    // inner velocity
+  v2 = -0.5;   // outer velocity
   P  = 2.5;    // pressure
   dy = 0.05;   // width of ramp function (see Robertson 2009)
   A  = 0.1;    // amplitude of the perturbation
@@ -700,72 +788,78 @@ void Grid3D::KH_res_ind()
         id = i + j * H.nx + k * H.nx * H.ny;
         // get the centered x and y positions
         Get_Position(i, j, k, &x_pos, &y_pos, &z_pos);
-
-        // inner fluid
-        if (fabs(y_pos - 0.5) < 0.25) {
-          if (y_pos > 0.5) {
-            C.density[id] =
-                d1 - (d1 - d2) * exp(-0.5 * pow(y_pos - 0.75 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-            C.momentum_x[id] =
-                v1 * C.density[id] - C.density[id] * (v1 - v2) *
-                                         exp(-0.5 * pow(y_pos - 0.75 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-            C.momentum_y[id] = C.density[id] * A * sin(4 * M_PI * x_pos) *
-                               exp(-0.5 * pow(y_pos - 0.75 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-          } else {
-            C.density[id] =
-                d1 - (d1 - d2) * exp(-0.5 * pow(y_pos - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-            C.momentum_x[id] =
-                v1 * C.density[id] - C.density[id] * (v1 - v2) *
-                                         exp(-0.5 * pow(y_pos - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-            C.momentum_y[id] = C.density[id] * A * sin(4 * M_PI * x_pos) *
-                               exp(-0.5 * pow(y_pos - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+        // 2D initial conditions:
+        if (H.nz == 1) {
+          // inner fluid
+          if (fabs(y_pos - 0.5) < 0.25) {
+            if (y_pos > 0.5) {
+              C.density[id] =
+                  d1 - (d1 - d2) * exp(-0.5 * pow(y_pos - 0.75 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+              C.momentum_x[id] = v1 * C.density[id] -
+                                 C.density[id] * (v1 - v2) *
+                                     exp(-0.5 * pow(y_pos - 0.75 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+              C.momentum_y[id] = C.density[id] * A * sin(4 * M_PI * x_pos) *
+                                 exp(-0.5 * pow(y_pos - 0.75 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+            } else {
+              C.density[id] =
+                  d1 - (d1 - d2) * exp(-0.5 * pow(y_pos - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+              C.momentum_x[id] = v1 * C.density[id] -
+                                 C.density[id] * (v1 - v2) *
+                                     exp(-0.5 * pow(y_pos - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+              C.momentum_y[id] = C.density[id] * A * sin(4 * M_PI * x_pos) *
+                                 exp(-0.5 * pow(y_pos - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+            }
           }
-        }
-        // outer fluid
-        else {
-          if (y_pos > 0.5) {
-            C.density[id] =
-                d2 + (d1 - d2) * exp(-0.5 * pow(y_pos - 0.75 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-            C.momentum_x[id] =
-                v2 * C.density[id] + C.density[id] * (v1 - v2) *
-                                         exp(-0.5 * pow(y_pos - 0.75 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-            C.momentum_y[id] = C.density[id] * A * sin(4 * M_PI * x_pos) *
-                               exp(-0.5 * pow(y_pos - 0.75 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-          } else {
-            C.density[id] =
-                d2 + (d1 - d2) * exp(-0.5 * pow(y_pos - 0.25 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-            C.momentum_x[id] =
-                v2 * C.density[id] + C.density[id] * (v1 - v2) *
-                                         exp(-0.5 * pow(y_pos - 0.25 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-            C.momentum_y[id] = C.density[id] * A * sin(4 * M_PI * x_pos) *
-                               exp(-0.5 * pow(y_pos - 0.25 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+          // outer fluid
+          else {
+            if (y_pos > 0.5) {
+              C.density[id] =
+                  d2 + (d1 - d2) * exp(-0.5 * pow(y_pos - 0.75 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+              C.momentum_x[id] = v2 * C.density[id] +
+                                 C.density[id] * (v1 - v2) *
+                                     exp(-0.5 * pow(y_pos - 0.75 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+              C.momentum_y[id] = C.density[id] * A * sin(4 * M_PI * x_pos) *
+                                 exp(-0.5 * pow(y_pos - 0.75 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+            } else {
+              C.density[id] =
+                  d2 + (d1 - d2) * exp(-0.5 * pow(y_pos - 0.25 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+              C.momentum_x[id] = v2 * C.density[id] +
+                                 C.density[id] * (v1 - v2) *
+                                     exp(-0.5 * pow(y_pos - 0.25 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+              C.momentum_y[id] = C.density[id] * A * sin(4 * M_PI * x_pos) *
+                                 exp(-0.5 * pow(y_pos - 0.25 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+            }
           }
-        }
-        // C.momentum_y[id] = C.density[id] * A*sin(4*PI*x_pos);
-        C.momentum_z[id] = 0.0;
+          // C.momentum_y[id] = C.density[id] * A*sin(4*PI*x_pos);
+          C.momentum_z[id] = 0.0;
 
-        // cylindrical version (3D only)
-        r   = sqrt((z_pos - zc) * (z_pos - zc) + (y_pos - yc) * (y_pos - yc));  // center the cylinder at yc, zc
-        phi = atan2((z_pos - zc), (y_pos - yc));
+          // 3D initial conditions:
+        } else {
+          // cylindrical version (3D only)
+          r   = sqrt((z_pos - zc) * (z_pos - zc) + (y_pos - yc) * (y_pos - yc));  // center the cylinder at yc, zc
+          phi = atan2((z_pos - zc), (y_pos - yc));
 
-        if (r < 0.25)  // inside the cylinder
-        {
-          C.density[id] = d1 - (d1 - d2) * exp(-0.5 * pow(r - 0.25 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-          C.momentum_x[id] = v1 * C.density[id] -
-                             C.density[id] * exp(-0.5 * pow(r - 0.25 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-          C.momentum_y[id] = cos(phi) * C.density[id] * A * sin(4 * M_PI * x_pos) *
-                             exp(-0.5 * pow(r - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-          C.momentum_z[id] = sin(phi) * C.density[id] * A * sin(4 * M_PI * x_pos) *
-                             exp(-0.5 * pow(r - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-        } else  // outside the cylinder
-        {
-          C.density[id] = d2 + (d1 - d2) * exp(-0.5 * pow(r - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-          C.momentum_x[id] = v2 * C.density[id] +
-                             C.density[id] * exp(-0.5 * pow(r - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
-          C.momentum_y[id] = cos(phi) * C.density[id] * A * sin(4 * M_PI * x_pos) *
-                             (1.0 - exp(-0.5 * pow(r - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy)));
-          C.momentum_z[id] = sin(phi) * C.density[id] * A * sin(4 * M_PI * x_pos) *
-                             (1.0 - exp(-0.5 * pow(r - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy)));
+          if (r < 0.25)  // inside the cylinder
+          {
+            C.density[id] = d1 - (d1 - d2) * exp(-0.5 * pow(r - 0.25 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+            C.momentum_x[id] =
+                v1 * C.density[id] -
+                C.density[id] * exp(-0.5 * pow(r - 0.25 - sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+            C.momentum_y[id] = cos(phi) * C.density[id] * A * sin(4 * M_PI * x_pos) *
+                               exp(-0.5 * pow(r - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+            C.momentum_z[id] = sin(phi) * C.density[id] * A * sin(4 * M_PI * x_pos) *
+                               exp(-0.5 * pow(r - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+          } else  // outside the cylinder
+          {
+            C.density[id] = d2 + (d1 - d2) * exp(-0.5 * pow(r - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+            C.momentum_x[id] =
+                v2 * C.density[id] +
+                C.density[id] * exp(-0.5 * pow(r - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy));
+            C.momentum_y[id] = cos(phi) * C.density[id] * A * sin(4 * M_PI * x_pos) *
+                               (1.0 - exp(-0.5 * pow(r - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy)));
+            C.momentum_z[id] = sin(phi) * C.density[id] * A * sin(4 * M_PI * x_pos) *
+                               (1.0 - exp(-0.5 * pow(r - 0.25 + sqrt(-2.0 * dy * dy * log(0.5)), 2) / (dy * dy)));
+          }
         }
 
         // No matter what we do with the density and momentum, set the Energy
@@ -1375,7 +1469,7 @@ void Grid3D::Uniform_Grid()
   }
 }
 
-void Grid3D::Zeldovich_Pancake(struct parameters P)
+void Grid3D::Zeldovich_Pancake(struct Parameters P)
 {
 #ifndef COSMOLOGY
   chprintf("To run a Zeldovich Pancake COSMOLOGY has to be turned ON \n");
@@ -1387,18 +1481,18 @@ void Grid3D::Zeldovich_Pancake(struct parameters P)
   Real H0, h, Omega_M, rho_0, G, z_zeldovich, z_init, x_center, T_init, k_x;
 
   chprintf("Setting Zeldovich Pancake initial conditions...\n");
-  H0 = P.H0;
-  h = H0 / 100;
+  H0      = P.H0;
+  h       = H0 / 100;
   Omega_M = P.Omega_M;
 
   chprintf(" h = %f \n", h);
   chprintf(" Omega_M = %f \n", Omega_M);
 
   H0 /= 1000;  //[km/s / kpc]
-  G = G_COSMO;
-  rho_0 = 3 * H0 * H0 / (8 * M_PI * G) * Omega_M / h / h;
+  G           = G_COSMO;
+  rho_0       = 3 * H0 * H0 / (8 * M_PI * G) * Omega_M / h / h;
   z_zeldovich = 1;
-  z_init = P.Init_redshift;
+  z_init      = P.Init_redshift;
   chprintf(" rho_0 = %f \n", rho_0);
   chprintf(" z_init = %f \n", z_init);
   chprintf(" z_zeldovich = %f \n", z_zeldovich);
@@ -1458,17 +1552,17 @@ void Grid3D::Zeldovich_Pancake(struct parameters P)
         index = (int(x_pos / H.dx) + 0) % 256;
         // index = ( index + 16 ) % 256;
         dens = ics_values[0 * nPoints + index];
-        vel = ics_values[1 * nPoints + index];
-        E = ics_values[2 * nPoints + index];
-        U = ics_values[3 * nPoints + index];
+        vel  = ics_values[1 * nPoints + index];
+        E    = ics_values[2 * nPoints + index];
+        U    = ics_values[3 * nPoints + index];
         // //
 
         // chprintf( "%f \n", vel );
-        C.density[id] = dens;
+        C.density[id]    = dens;
         C.momentum_x[id] = dens * vel;
         C.momentum_y[id] = 0;
         C.momentum_z[id] = 0;
-        C.Energy[id] = E;
+        C.Energy[id]     = E;
 
   #ifdef DE
         C.GasEnergy[id] = U;
@@ -1480,7 +1574,7 @@ void Grid3D::Zeldovich_Pancake(struct parameters P)
 #endif  // COSMOLOGY
 }
 
-void Grid3D::Chemistry_Test(struct parameters P)
+void Grid3D::Chemistry_Test(struct Parameters P)
 {
   chprintf("Initializing Chemistry Test...\n");
 
@@ -1582,7 +1676,7 @@ void Grid3D::Chemistry_Test(struct parameters P)
 }
 
 #ifdef MHD
-void Grid3D::Circularly_Polarized_Alfven_Wave(struct parameters const P)
+void Grid3D::Circularly_Polarized_Alfven_Wave(struct Parameters const P)
 {
   // This test is only meaningful for a limited number of parameter values so I will check them here
   assert(P.polarization == 1.0 or
@@ -1701,7 +1795,7 @@ void Grid3D::Circularly_Polarized_Alfven_Wave(struct parameters const P)
   }
 }
 
-void Grid3D::Advecting_Field_Loop(struct parameters const P)
+void Grid3D::Advecting_Field_Loop(struct Parameters const P)
 {
   // This test is only meaningful for a limited number of parameter values so I will check them here
   // Check that the domain is centered on zero
@@ -1767,7 +1861,7 @@ void Grid3D::Advecting_Field_Loop(struct parameters const P)
   }
 }
 
-void Grid3D::MHD_Spherical_Blast(struct parameters const P)
+void Grid3D::MHD_Spherical_Blast(struct Parameters const P)
 {
   // This test is only meaningful for a limited number of parameter values so I will check them here
   // Check that the domain is centered on zero
@@ -1851,7 +1945,7 @@ void Grid3D::Orszag_Tang_Vortex()
 
         // Z vector potential
         vectorPotential.at(id + 2 * H.n_cells) =
-            magnetic_background / (4.0 * M_PI) * (std::cos(4.0 * M_PI * x) - 2.0 * std::cos(2.0 * M_PI * y));
+            magnetic_background / (4.0 * M_PI) * (std::cos(4.0 * M_PI * x) + 2.0 * std::cos(2.0 * M_PI * y));
       }
     }
   }
