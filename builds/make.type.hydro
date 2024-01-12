@@ -3,7 +3,7 @@
 DFLAGS    += -DCUDA
 DFLAGS    += -DMPI_CHOLLA
 DFLAGS    += -DPRECISION=2
-DFLAGS    += -DPPMC
+DFLAGS    += -DPPMP
 DFLAGS    += -DHLLC
 
 # Integrator
