@@ -11,11 +11,11 @@ DFLAGS    += -DHLLC
 DFLAGS    += -DVL
 
 # Apply a density and temperature floor
-DFLAGS    += -DDENSITY_FLOOR
-DFLAGS    += -DTEMPERATURE_FLOOR
+#DFLAGS    += -DDENSITY_FLOOR
+#DFLAGS    += -DTEMPERATURE_FLOOR
 
 # Solve the Gas Internal Energy usisng a Dual Energy Formalism
-#DFLAGS    += -DDE
+DFLAGS    += -DDE
 
 # Apply cooling on the GPU from precomputed tables
 DFLAGS    += -DCOOLING_GPU
