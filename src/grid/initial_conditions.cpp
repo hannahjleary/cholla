@@ -1322,7 +1322,7 @@ void Grid3D::Clouds()
   Real vz_bg, vz_cl;
   Real T_bg, T_cl;       // background and cloud temperature
   Real p_bg, p_cl;       // background and cloud pressure
-  Real mu   = 0.6;       // mean atomic weight (or 0.6??)
+  Real mu   = 1.0;       // mean atomic weight (or 0.6??)
   int N_cl  = 1;         // number of clouds
   Real R_cl = 0.05;       // cloud radius in code units (kpc)
   Real cl_pos[N_cl][3];  // array of cloud positions
