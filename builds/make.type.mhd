@@ -6,10 +6,9 @@ OUTPUT    ?=  -DOUTPUT -DHDF5
 
 MPI_GPU   ?=
 
-DFLAGS    += -DCUDA
 DFLAGS    += -DMPI_CHOLLA
 DFLAGS    += -DPRECISION=2
-DFLAGS    += -DPPMC
+DFLAGS    += -DPLMC
 DFLAGS    += -DHLLD
 DFLAGS    += -DMHD
 
@@ -48,6 +47,3 @@ DFLAGS    += $(MPI_GPU)
 
 # NOTE: The following macros are to help facilitate debugging and should not be
 # used on scientific runs
-
-# Limit the number of steps to evolve.
-# DFLAGS += -DN_STEPS_LIMIT=1000

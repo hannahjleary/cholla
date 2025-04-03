@@ -1,27 +1,24 @@
 /*! \file simple_1D_cuda.cu
  *  \brief Definitions of the 1D simple algorithm functions. */
 
-#ifdef CUDA
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-  #include <math.h>
-  #include <stdio.h>
-  #include <stdlib.h>
-
-  #include "../global/global.h"
-  #include "../global/global_cuda.h"
-  #include "../hydro/hydro_cuda.h"
-  #include "../integrators/simple_1D_cuda.h"
-  #include "../io/io.h"
-  #include "../reconstruction/pcm_cuda.h"
-  #include "../reconstruction/plmc_cuda.h"
-  #include "../reconstruction/plmp_cuda.h"
-  #include "../reconstruction/ppmc_cuda.h"
-  #include "../reconstruction/ppmp_cuda.h"
-  #include "../riemann_solvers/exact_cuda.h"
-  #include "../riemann_solvers/hllc_cuda.h"
-  #include "../riemann_solvers/roe_cuda.h"
-  #include "../utils/error_handling.h"
-  #include "../utils/gpu.hpp"
+#include "../global/global.h"
+#include "../global/global_cuda.h"
+#include "../hydro/hydro_cuda.h"
+#include "../integrators/simple_1D_cuda.h"
+#include "../io/io.h"
+#include "../reconstruction/plm_cuda.h"
+#include "../reconstruction/ppmc_cuda.h"
+#include "../reconstruction/ppmp_cuda.h"
+#include "../reconstruction/reconstruction.h"
+#include "../riemann_solvers/exact_cuda.h"
+#include "../riemann_solvers/hllc_cuda.h"
+#include "../riemann_solvers/roe_cuda.h"
+#include "../utils/error_handling.h"
+#include "../utils/gpu.hpp"
 
 void Simple_Algorithm_1D_CUDA(Real *d_conserved, int nx, int x_off, int n_ghost, Real dx, Real xbound, Real dt,
                               int n_fields, int custom_grav)
@@ -54,66 +51,55 @@ void Simple_Algorithm_1D_CUDA(Real *d_conserved, int nx, int x_off, int n_ghost,
     memory_allocated = true;
   }
 
-  // Step 1: Do the reconstruction
-  #ifdef PCM
-  hipLaunchKernelGGL(PCM_Reconstruction_1D, dimGrid, dimBlock, 0, 0, dev_conserved, Q_Lx, Q_Rx, nx, n_ghost, gama,
-                     n_fields);
+// Step 1: Do the reconstruction
+#if defined(PLMP) or defined(PLMC)
+  hipLaunchKernelGGL(PLM_cuda<0>, dimGrid, dimBlock, 0, 0, dev_conserved, Q_Lx, Q_Rx, nx, ny, nz, dx, dt, gama);
   GPU_Error_Check();
-  #endif
-  #ifdef PLMP
-  hipLaunchKernelGGL(PLMP_cuda, dimGrid, dimBlock, 0, 0, dev_conserved, Q_Lx, Q_Rx, nx, ny, nz, n_ghost, dx, dt, gama,
-                     0, n_fields);
-  GPU_Error_Check();
-  #endif
-  #ifdef PLMC
-  hipLaunchKernelGGL(PLMC_cuda, dimGrid, dimBlock, 0, 0, dev_conserved, Q_Lx, Q_Rx, nx, ny, nz, dx, dt, gama, 0,
-                     n_fields);
-  GPU_Error_Check();
-  #endif
-  #ifdef PPMP
+#endif  // PLMP or PLMC
+#ifdef PPMP
   hipLaunchKernelGGL(PPMP_cuda, dimGrid, dimBlock, 0, 0, dev_conserved, Q_Lx, Q_Rx, nx, ny, nz, n_ghost, dx, dt, gama,
                      0, n_fields);
   GPU_Error_Check();
-  #endif
-  #ifdef PPMC
-  hipLaunchKernelGGL(PPMC_CTU, dimGrid, dimBlock, 0, 0, dev_conserved, Q_Lx, Q_Rx, nx, ny, nz, dx, dt, gama, 0);
+#endif
+#ifdef PPMC
+  hipLaunchKernelGGL(PPMC_CTU<0>, dimGrid, dimBlock, 0, 0, dev_conserved, Q_Lx, Q_Rx, nx, ny, nz, dx, dt, gama);
   GPU_Error_Check();
-  #endif
+#endif
 
-  // Step 2: Calculate the fluxes
-  #ifdef EXACT
-  hipLaunchKernelGGL(Calculate_Exact_Fluxes_CUDA, dimGrid, dimBlock, 0, 0, Q_Lx, Q_Rx, F_x, nx, ny, nz, n_ghost, gama,
-                     0, n_fields);
-  #endif
-  #ifdef ROE
-  hipLaunchKernelGGL(Calculate_Roe_Fluxes_CUDA, dimGrid, dimBlock, 0, 0, Q_Lx, Q_Rx, F_x, nx, ny, nz, n_ghost, gama, 0,
-                     n_fields);
-  #endif
-  #ifdef HLLC
-  hipLaunchKernelGGL(Calculate_HLLC_Fluxes_CUDA, dimGrid, dimBlock, 0, 0, Q_Lx, Q_Rx, F_x, nx, ny, nz, n_ghost, gama, 0,
-                     n_fields);
-  #endif
+// Step 2: Calculate the fluxes
+#ifdef EXACT
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(Calculate_Exact_Fluxes_CUDA<reconstruction::Kind::chosen, 0>), dimGrid, dimBlock,
+                     0, 0, dev_conserved, Q_Lx, Q_Rx, F_x, nx, ny, nz, n_cells, gama, n_fields);
+#endif
+#ifdef ROE
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(Calculate_Roe_Fluxes_CUDA<reconstruction::Kind::chosen, 0>), dimGrid, dimBlock, 0,
+                     0, dev_conserved, Q_Lx, Q_Rx, F_x, nx, ny, nz, n_cells, gama, n_fields);
+#endif
+#ifdef HLLC
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(Calculate_HLLC_Fluxes_CUDA<reconstruction::Kind::chosen, 0>), dimGrid, dimBlock, 0,
+                     0, dev_conserved, Q_Lx, Q_Rx, F_x, nx, ny, nz, n_cells, gama, n_fields);
+#endif
   GPU_Error_Check();
 
-  #ifdef DE
+#ifdef DE
   // Compute the divergence of Vel before updating the conserved array, this
   // solves synchronization issues when adding this term on
   // Update_Conserved_Variables
   hipLaunchKernelGGL(Partial_Update_Advected_Internal_Energy_1D, dimGrid, dimBlock, 0, 0, dev_conserved, Q_Lx, Q_Rx, nx,
                      n_ghost, dx, dt, gama, n_fields);
-  #endif
+#endif
 
   // Step 3: Update the conserved variable array
   hipLaunchKernelGGL(Update_Conserved_Variables_1D, dimGrid, dimBlock, 0, 0, dev_conserved, F_x, n_cells, x_off,
                      n_ghost, dx, xbound, dt, gama, n_fields, custom_grav);
   GPU_Error_Check();
 
-  // Synchronize the total and internal energy, if using dual-energy formalism
-  #ifdef DE
+// Synchronize the total and internal energy, if using dual-energy formalism
+#ifdef DE
   hipLaunchKernelGGL(Select_Internal_Energy_1D, dimGrid, dimBlock, 0, 0, dev_conserved, nx, n_ghost, n_fields);
   hipLaunchKernelGGL(Sync_Energies_1D, dimGrid, dimBlock, 0, 0, dev_conserved, n_cells, n_ghost, gama, n_fields);
   GPU_Error_Check();
-  #endif
+#endif
 
   return;
 }
@@ -126,5 +112,3 @@ void Free_Memory_Simple_1D()
   cudaFree(Q_Rx);
   cudaFree(F_x);
 }
-
-#endif  // CUDA

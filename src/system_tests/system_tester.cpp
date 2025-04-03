@@ -55,17 +55,25 @@ void system_test::SystemTestRunner::runTest(bool const &compute_L2_norm_only, do
   // Make sure we have all the required data files and open the test data file
   _testHydroFieldsFileVec.resize(numMpiRanks);
   _testParticlesFileVec.resize(numMpiRanks);
+  _testGravityFileVec.resize(numMpiRanks);
+  FnameTemplate fname_template(true, _outputDirectory);
   for (size_t fileIndex = 0; fileIndex < numMpiRanks; fileIndex++) {
     // Load the hydro data
-    std::string filePath = _outputDirectory + "/1.h5." + std::to_string(fileIndex);
+    std::string filePath = fname_template.format_fname(1, fileIndex, "");
     if (_hydroDataExists and std::filesystem::exists(filePath)) {
       _testHydroFieldsFileVec[fileIndex].openFile(filePath, H5F_ACC_RDONLY);
     }
 
     // Load the particles data
-    filePath = _outputDirectory + "/1_particles.h5." + std::to_string(fileIndex);
+    filePath = fname_template.format_fname(1, fileIndex, "_particles");
     if (_particleDataExists and std::filesystem::exists(filePath)) {
       _testParticlesFileVec[fileIndex].openFile(filePath, H5F_ACC_RDONLY);
+    }
+
+    // Load the gravity data
+    filePath = fname_template.format_fname(1, fileIndex, "_gravity");
+    if (_gravityDataExists and std::filesystem::exists(filePath)) {
+      _testGravityFileVec[fileIndex].openFile(filePath, H5F_ACC_RDONLY);
     }
   }
 
@@ -90,6 +98,12 @@ void system_test::SystemTestRunner::runTest(bool const &compute_L2_norm_only, do
     *iter                                  = "particle_density";
 
     _testDataSetNames.insert(_testDataSetNames.end(), particleNames.begin(), particleNames.end());
+  }
+  if (_gravityDataExists) {
+    // Load the data, replace the density value with the new name, then append
+    std::vector<std::string> gravityNames = _findDataSetNames(_testGravityFileVec[0]);
+
+    _testDataSetNames.insert(_testDataSetNames.end(), gravityNames.begin(), gravityNames.end());
   }
 
   // Start Performing Checks
@@ -138,6 +152,11 @@ void system_test::SystemTestRunner::runTest(bool const &compute_L2_norm_only, do
         testData     = _loadTestParticleData(dataSetName);
         fiducialData = _loadFiducialParticleData(dataSetName);
       }
+    } else if (dataSetName == "potential") {
+      testData     = _loadGravityPotential(_testGravityFileVec[0]);
+      fiducialData = _loadGravityPotential(_fiducialFile);
+      testDims[0]  = fiducialData.size();
+
     } else {
       // This is a field data set
       testData = loadTestFieldData(dataSetName, testDims);
@@ -173,6 +192,7 @@ void system_test::SystemTestRunner::runTest(bool const &compute_L2_norm_only, do
             int64_t ulpsDiff;
             bool areEqual = testing_utilities::nearlyEqualDbl(fiducialData.at(index), testData.at(index), absoluteDiff,
                                                               ulpsDiff, _fixedEpsilon);
+
             ASSERT_TRUE(areEqual) << std::endl
                                   << "Difference in " << dataSetName << " dataset at [" << i << "," << j << "," << k
                                   << "]" << std::endl
@@ -220,6 +240,10 @@ void system_test::SystemTestRunner::runL1ErrorTest(double const &maxAllowedL1Err
     std::string errMessage = "Error: SystemTestRunner::runL1ErrorTest does not support particles";
     throw std::runtime_error(errMessage);
   }
+  if (_gravityDataExists) {
+    std::string errMessage = "Error: SystemTestRunner::runL1ErrorTest does not support gravity";
+    throw std::runtime_error(errMessage);
+  }
   if (not _hydroDataExists) {
     std::string errMessage = "Error: SystemTestRunner::runL1ErrorTest requires hydro data";
     throw std::runtime_error(errMessage);
@@ -236,15 +260,16 @@ void system_test::SystemTestRunner::runL1ErrorTest(double const &maxAllowedL1Err
   // Make sure we have all the required data files and open the data files
   _testHydroFieldsFileVec.resize(numMpiRanks);
   std::vector<H5::H5File> initialHydroFieldsFileVec(numMpiRanks);
+  FnameTemplate fname_template(true, _outputDirectory);
   for (size_t fileIndex = 0; fileIndex < numMpiRanks; fileIndex++) {
     // Initial time data
-    std::string filePath = _outputDirectory + "/0.h5." + std::to_string(fileIndex);
+    std::string filePath = fname_template.format_fname(0, fileIndex, "");
     if (std::filesystem::exists(filePath)) {
       initialHydroFieldsFileVec[fileIndex].openFile(filePath, H5F_ACC_RDONLY);
     }
 
     // Final time data
-    filePath = _outputDirectory + "/1.h5." + std::to_string(fileIndex);
+    filePath = fname_template.format_fname(1, fileIndex, "");
     if (std::filesystem::exists(filePath)) {
       _testHydroFieldsFileVec[fileIndex].openFile(filePath, H5F_ACC_RDONLY);
     }
@@ -359,7 +384,7 @@ void system_test::SystemTestRunner::openHydroTestData()
 {
   _testHydroFieldsFileVec.resize(numMpiRanks);
   for (size_t fileIndex = 0; fileIndex < numMpiRanks; fileIndex++) {
-    std::string filePath = _outputDirectory + "/1.h5." + std::to_string(fileIndex);
+    std::string filePath = FnameTemplate(true, _outputDirectory).format_fname(1, fileIndex, "");
     if (std::filesystem::exists(filePath)) {
       _testHydroFieldsFileVec[fileIndex].openFile(filePath, H5F_ACC_RDONLY);
     }
@@ -421,8 +446,9 @@ std::vector<double> system_test::SystemTestRunner::generateSineData(double const
 // =============================================================================
 // Constructor
 system_test::SystemTestRunner::SystemTestRunner(bool const &particleData, bool const &hydroData,
-                                                bool const &useFiducialFile, bool const &useSettingsFile)
-    : _particleDataExists(particleData), _hydroDataExists(hydroData)
+                                                bool const &useFiducialFile, bool const &useSettingsFile,
+                                                bool const &gravityData)
+    : _particleDataExists(particleData), _hydroDataExists(hydroData), _gravityDataExists(gravityData)
 {
   // Get the test name, with and underscore instead of a "." since
   // we're actually generating file names
@@ -674,6 +700,31 @@ std::vector<double> system_test::SystemTestRunner::_loadTestParticleData(std::st
 
   // Return the entire dataset fully concatenated and sorted
   return testData;
+}
+// =============================================================================
+
+// =============================================================================
+std::vector<double> system_test::SystemTestRunner::_loadGravityPotential(H5::H5File const &data_file)
+{
+  // Determine the shape of the dataset
+  H5::DataSet const dataSet = data_file.openDataSet("potential");
+
+  // Determine dataset size/shape and check that it's correct
+  H5::DataSpace dataSpace = dataSet.getSpace();
+
+  // Get the number of elements and increase the total count
+  size_t potential_size = dataSpace.getSimpleExtentNpoints();
+
+  // Allocate the vectors
+  std::vector<double> gravity_data(potential_size);
+
+  // Open the dataset
+  H5::DataSet const testDataSet = data_file.openDataSet("potential");
+
+  // Read in data
+  testDataSet.read(gravity_data.data(), H5::PredType::NATIVE_DOUBLE);
+
+  return gravity_data;
 }
 // =============================================================================
 

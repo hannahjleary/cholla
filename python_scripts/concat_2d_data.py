@@ -15,17 +15,21 @@ import concat_2d_data
 """
 
 import h5py
-import pathlib
 import numpy as np
+
+import pathlib
+from typing import Optional
+import warnings
 
 import concat_internals
 
 # ==============================================================================
-def concat_2d_dataset(source_directory: pathlib.Path,
-                      output_directory: pathlib.Path,
-                      num_processes: int,
+def concat_2d_dataset(output_directory: pathlib.Path,
                       output_number: int,
                       dataset_kind: str,
+                      build_source_path,
+                      *,
+                      num_processes: Optional[int] = None,
                       concat_xy: bool = True,
                       concat_yz: bool = True,
                       concat_xz: bool = True,
@@ -41,16 +45,17 @@ def concat_2d_dataset(source_directory: pathlib.Path,
 
   Parameters
   ----------
-  source_directory : pathlib.Path
-      The directory containing the unconcatenated files
   output_directory : pathlib.Path
-      The directory containing the new concatenated files
-  num_processes : int
-      The number of ranks that Cholla was run with
+      The directory containing the new concatenated files 
   output_number : int
       The output number to concatenate
   dataset_kind : str
       The type of 2D dataset to concatenate. Can be 'slice', 'proj', or 'rot_proj'.
+  build_source_path : callable
+      A function used to construct the paths to the files that are to be concatenated.
+  num_processes : int, optional
+      The number of ranks that Cholla was run with. This information is now inferred
+      from the hdf5 file and the parameter will be removed in the future.
   concat_xy : bool
       If True then concatenate the XY slices/projections. Defaults to True.
   concat_yz : bool
@@ -67,38 +72,12 @@ def concat_2d_dataset(source_directory: pathlib.Path,
       What compression settings to use if compressing. Defaults to None.
   chunking : bool or tuple
       Whether or not to use chunking and the chunk size. Defaults to None.
-  source_directory: pathlib.Path :
-
-  output_directory: pathlib.Path :
-
-  num_processes: int :
-
-  output_number: int :
-
-  dataset_kind: str :
-
-  concat_xy: bool :
-        (Default value = True)
-  concat_yz: bool :
-        (Default value = True)
-  concat_xz: bool :
-        (Default value = True)
-  skip_fields: list :
-        (Default value = [])
-  destination_dtype: np.dtype :
-        (Default value = None)
-  compression_type: str :
-        (Default value = None)
-  compression_options: str :
-        (Default value = None)
-
-  Returns
-  -------
-
   """
 
+  if num_processes is not None:
+    warnings.warn('the num_processes parameter will be removed')
+
   # Error checking
-  assert num_processes > 1, 'num_processes must be greater than 1'
   assert output_number >= 0, 'output_number must be greater than or equal to 0'
   assert dataset_kind in ['slice', 'proj', 'rot_proj'], '`dataset_kind` can only be one of "slice", "proj", "rot_proj".'
 
@@ -106,7 +85,20 @@ def concat_2d_dataset(source_directory: pathlib.Path,
   destination_file = concat_internals.destination_safe_open(output_directory / f'{output_number}_{dataset_kind}.h5')
 
   # Setup the destination file
-  with h5py.File(source_directory / f'{output_number}_{dataset_kind}.h5.0', 'r') as source_file:
+  source_fname_0 = build_source_path(proc_id = 0, nfile = output_number)
+  with h5py.File(source_fname_0, 'r') as source_file:
+
+    # determine how many files data must be concatenated from
+    num_files = concat_internals.infer_numfiles_from_header(source_file.attrs)
+
+    if (num_processes is not None) and (num_processes != num_files):
+      raise RuntimeError(
+        f"header of {source_fname_0!r} implies that it contains data that is "
+        f"split across {num_files} files (rather than {num_processes} files).")
+    elif num_files < 2:
+      raise RuntimeError('it only makes sense to concatenate data split across '
+                         '2 or more files')
+
     # Copy over header
     destination_file = concat_internals.copy_header(source_file, destination_file)
 
@@ -141,10 +133,12 @@ def concat_2d_dataset(source_directory: pathlib.Path,
                                       compression=compression_type,
                                       compression_opts=compression_options)
 
+  
+
   # Copy data
-  for rank in range(num_processes):
+  for rank in range(num_files):
     # Open source file
-    source_file = h5py.File(source_directory / f'{output_number}_{dataset_kind}.h5.{rank}', 'r')
+    source_file = h5py.File(build_source_path(proc_id = rank, nfile = output_number), 'r')
 
     # Loop through and copy datasets
     for dataset in datasets_to_copy:
@@ -242,20 +236,25 @@ if __name__ == '__main__':
   from timeit import default_timer
   start = default_timer()
 
-  cli = concat_internals.common_cli()
+  cli = concat_internals.common_cli(num_processes_choice = 'deprecate')
   cli.add_argument('-d', '--dataset-kind', type=str, required=True,    help='What kind of 2D dataset to concatnate. Options are "slice", "proj", and "rot_proj"')
   cli.add_argument('--disable-xy', default=True, action='store_false', help='Disables concating the XY datasets.')
   cli.add_argument('--disable-yz', default=True, action='store_false', help='Disables concating the YZ datasets.')
   cli.add_argument('--disable-xz', default=True, action='store_false', help='Disables concating the XZ datasets.')
   args = cli.parse_args()
 
+  build_source_path = concat_internals.get_source_path_builder(
+    source_directory = args.source_directory,
+    pre_extension_suffix = f'_{args.dataset_kind}',
+    known_output_snap = args.concat_outputs[0])
+
   # Perform the concatenation
   for output in args.concat_outputs:
-    concat_2d_dataset(source_directory=args.source_directory,
-                      output_directory=args.output_directory,
+    concat_2d_dataset(output_directory=args.output_directory,
                       num_processes=args.num_processes,
                       output_number=output,
                       dataset_kind=args.dataset_kind,
+                      build_source_path = build_source_path,
                       concat_xy=args.disable_xy,
                       concat_yz=args.disable_yz,
                       concat_xz=args.disable_xz,

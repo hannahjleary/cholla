@@ -31,7 +31,7 @@ void Grid3D::Set_Initial_Conditions(Parameters P)
   Set_Domain_Properties(P);
   Set_Gammas(P.gamma);
 
-  if (strcmp(P.init, "Constant") == 0) {
+  if (strcmp(P.init, "Constant") == 0 or strcmp(P.init, "Isolated_Stellar_Cluster") == 0) {
     Constant(P);
   } else if (strcmp(P.init, "Sound_Wave") == 0) {
     Sound_Wave(P);
@@ -1414,12 +1414,11 @@ void Grid3D::Clouds()
 #ifdef DE
             C.GasEnergy[id] = p_cl / (gama - 1.0);
 #endif  // DE
-
 #ifdef SCALAR
   #ifdef DUST
             C.host[id + H.n_cells * grid_enum::dust_density] = rho_cl * 1e-2;
   #endif  // DUST
-#endif
+#endif    // SCALAR
           }
         }
       }
@@ -1783,8 +1782,8 @@ void Grid3D::Circularly_Polarized_Alfven_Wave(struct Parameters const P)
         auto const magnetic_centered =
             mhd::utils::cellCenteredMagneticFields(C.host, id, i, j, k, H.n_cells, H.nx, H.ny);
         Real const energy = hydro_utilities::Calc_Energy_Conserved(pressure, density, momentum_x_rot, momentum_y_rot,
-                                                                   momentum_z_rot, ::gama, magnetic_centered.x,
-                                                                   magnetic_centered.y, magnetic_centered.z);
+                                                                   momentum_z_rot, ::gama, magnetic_centered.x(),
+                                                                   magnetic_centered.y(), magnetic_centered.z());
 
         // Final assignment
         C.density[id]    = density;
@@ -1856,8 +1855,8 @@ void Grid3D::Advecting_Field_Loop(struct Parameters const P)
         C.momentum_y[id] = P.rho * P.vy;
         C.momentum_z[id] = P.rho * P.vz;
         C.Energy[id]     = hydro_utilities::Calc_Energy_Conserved(P.P, P.rho, C.momentum_x[id], C.momentum_y[id],
-                                                                  C.momentum_z[id], ::gama, magnetic_centered.x,
-                                                                  magnetic_centered.y, magnetic_centered.z);
+                                                                  C.momentum_z[id], ::gama, magnetic_centered.x(),
+                                                                  magnetic_centered.y(), magnetic_centered.z());
       }
     }
   }
@@ -1917,8 +1916,8 @@ void Grid3D::MHD_Spherical_Blast(struct Parameters const P)
           pressure = P.P;
         }
         C.Energy[id] = hydro_utilities::Calc_Energy_Conserved(
-            pressure, C.density[id], C.momentum_x[id], C.momentum_y[id], C.momentum_z[id], ::gama, magnetic_centered.x,
-            magnetic_centered.y, magnetic_centered.z);
+            pressure, C.density[id], C.momentum_x[id], C.momentum_y[id], C.momentum_z[id], ::gama,
+            magnetic_centered.x(), magnetic_centered.y(), magnetic_centered.z());
       }
     }
   }
@@ -1977,7 +1976,7 @@ void Grid3D::Orszag_Tang_Vortex()
         C.momentum_z[id] = 0.0;
         C.Energy[id]     = hydro_utilities::Calc_Energy_Conserved(
             pressure_background, C.density[id], C.momentum_x[id], C.momentum_y[id], C.momentum_z[id], ::gama,
-            magnetic_centered.x, magnetic_centered.y, magnetic_centered.z);
+            magnetic_centered.x(), magnetic_centered.y(), magnetic_centered.z());
       }
     }
   }

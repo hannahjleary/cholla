@@ -12,6 +12,7 @@
 
 #include <set>
 
+#include "../io/ParameterMap.h"       // define parameter_map
 #include "../io/io.h"                 //defines chprintf
 #include "../utils/error_handling.h"  // defines ASSERT
 
@@ -101,116 +102,44 @@ char *Trim(char *s)
 }
 
 // NOLINTNEXTLINE(cert-err58-cpp)
-const std::set<const char *> optionalParams = {
-    "flag_delta",   "ddelta_dt",   "n_delta",  "Lz",       "Lx",      "phi",     "theta",
-    "delta",        "nzr",         "nxr",      "H0",       "Omega_M", "Omega_L", "Init_redshift",
-    "End_redshift", "tile_length", "n_proc_x", "n_proc_y", "n_proc_z"};
+// NOLINTNEXTLINE(*)
+const std::set<std::string> optionalParams = {"flag_delta",   "ddelta_dt",  "n_delta", "Lz",  "Lx", "phi",
+                                              "theta",        "delta",      "nzr",     "nxr", "H0", "Omega_M",
+                                              "Omega_L",      "Omega_R",    "Omega_K", "w0",  "wa", "Init_redshift",
+                                              "End_redshift", "tile_length"};  // NOLINT
 
-/*! \fn int Is_Param_Valid(char *name);
- * \brief Verifies that a param is valid (even if not needed).  Avoids
- * "warnings" in output. */
-int Is_Param_Valid(const char *param_name)
+bool Old_Style_Parse_Param(const char *name, const char *value, struct Parameters *parms);
+
+void Init_Param_Struct_Members(ParameterMap &param, struct Parameters *parms);
+
+void Parse_Params(ParameterMap &pmap, struct Parameters *parms)
 {
-  // for (auto optionalParam = optionalParams.begin(); optionalParam != optionalParams.end(); ++optionalParam) {
-  for (const auto *optionalParam : optionalParams) {
-    if (strcmp(param_name, optionalParam) == 0) {
-      return 1;
-    }
-  }
-  return 0;
-}
-
-void Parse_Param(char *name, char *value, struct Parameters *parms);
-
-/*! \fn void Parse_Params(char *param_file, struct Parameters * parms);
- *  \brief Reads the parameters in the given file into a structure. */
-void Parse_Params(char *param_file, struct Parameters *parms, int argc, char **argv)
-{
-  int buf;
-  char *s, buff[256];
-  FILE *fp = fopen(param_file, "r");
-  if (fp == NULL) {
-    chprintf("Exiting at file %s line %d: failed to read param file %s \n", __FILE__, __LINE__, param_file);
-    exit(1);
-    return;
-  }
-
 #ifdef COSMOLOGY
   // Initialize file name as an empty string
   parms->scale_outputs_file[0] = '\0';
 #endif
 
-  /* Read next line */
-  while ((s = fgets(buff, sizeof buff, fp)) != NULL) {
-    /* Skip blank lines and comments */
-    if (buff[0] == '\n' || buff[0] == '#' || buff[0] == ';') {
-      continue;
-    }
+  // the plan is eventually replace Old_Style_Parse_Param entirely with
+  // Init_Param_Struct_Members.
+  auto fn = [&](const char *name, const char *value) -> bool { return Old_Style_Parse_Param(name, value, parms); };
 
-    /* Parse name/value pair from line */
-    char name[MAXLEN], value[MAXLEN];
-    s = strtok(buff, "=");
-    if (s == NULL) {
-      continue;
-    } else {
-      strncpy(name, s, MAXLEN);
-    }
-    s = strtok(NULL, "=");
-    if (s == NULL) {
-      continue;
-    } else {
-      strncpy(value, s, MAXLEN);
-    }
-    Trim(value);
-    Parse_Param(name, value, parms);
-  }
-  /* Close file */
-  fclose(fp);
+  pmap.pass_entries_to_legacy_parse_param(fn);
 
-  // Parse overriding args from command line
-  for (int i = 0; i < argc; ++i) {
-    char name[MAXLEN], value[MAXLEN];
-    s = strtok(argv[i], "=");
-    if (s == NULL) {
-      continue;
-    } else {
-      strncpy(name, s, MAXLEN);
-    }
-    s = strtok(NULL, "=");
-    if (s == NULL) {
-      continue;
-    } else {
-      strncpy(value, s, MAXLEN);
-    }
-    Parse_Param(name, value, parms);
-    chprintf("Override with %s=%s\n", name, value);
-  }
+  // the plan is to eventually, use the new parsing functions from Parse_Param like the following
+  Init_Param_Struct_Members(pmap, parms);
 }
 
+void Warn_Unused_Params(ParameterMap &pmap) { pmap.warn_unused_parameters(optionalParams); }
+
 /*! \fn void Parse_Param(char *name,char *value, struct Parameters *parms);
- *  \brief Parses and sets a single param based on name and value. */
-void Parse_Param(char *name, char *value, struct Parameters *parms)
+ *  \brief Parses and sets a single param based on name and value.
+ *
+ *  \returns true if the parameter was actually used. false otherwise.
+ */
+bool Old_Style_Parse_Param(const char *name, const char *value, struct Parameters *parms)
 {
   /* Copy into correct entry in parameters struct */
-  if (strcmp(name, "nx") == 0) {
-    parms->nx = atoi(value);
-  } else if (strcmp(name, "ny") == 0) {
-    parms->ny = atoi(value);
-  } else if (strcmp(name, "nz") == 0) {
-    parms->nz = atoi(value);
-#ifdef STATIC_GRAV
-  } else if (strcmp(name, "custom_grav") == 0) {
-    parms->custom_grav = atoi(value);
-#endif
-  } else if (strcmp(name, "tout") == 0) {
-    parms->tout = atof(value);
-  } else if (strcmp(name, "outstep") == 0) {
-    parms->outstep = atof(value);
-  } else if (strcmp(name, "n_steps_output") == 0) {
-    parms->n_steps_output = atoi(value);
-  } else if (strcmp(name, "gamma") == 0) {
-    parms->gamma = atof(value);
-  } else if (strcmp(name, "init") == 0) {
+  if (strcmp(name, "init") == 0) {
     strncpy(parms->init, value, MAXLEN);
   } else if (strcmp(name, "nfile") == 0) {
     parms->nfile = atoi(value);
@@ -241,9 +170,7 @@ void Parse_Param(char *name, char *value, struct Parameters *parms)
     parms->out_float32_GasEnergy = atoi(value);
 #endif  // DE
   } else if (strcmp(name, "output_always") == 0) {
-    int tmp = atoi(value);
-    CHOLLA_ASSERT((tmp == 0) or (tmp == 1), "output_always must be 1 or 0.");
-    parms->output_always = tmp;
+    parms->output_always = atoi(value);
 #ifdef MHD
   } else if (strcmp(name, "out_float32_magnetic_x") == 0) {
     parms->out_float32_magnetic_x = atoi(value);
@@ -252,6 +179,20 @@ void Parse_Param(char *name, char *value, struct Parameters *parms)
   } else if (strcmp(name, "out_float32_magnetic_z") == 0) {
     parms->out_float32_magnetic_z = atoi(value);
 #endif  // MHD
+  } else if (strcmp(name, "output_always") == 0) {
+    int tmp = atoi(value);
+    // In this case the CHOLLA_ASSERT macro runs into issuse with the readability-simplify-boolean-expr clang-tidy check
+    // due to some weird macro expansion stuff. That check has been disabled here for now but in clang-tidy 18 the
+    // IgnoreMacro option should be used instead.
+    // NOLINTNEXTLINE(readability-simplify-boolean-expr)
+    CHOLLA_ASSERT((tmp == 0) or (tmp == 1), "output_always must be 1 or 0.");
+    parms->output_always = tmp;
+  } else if (strcmp(name, "legacy_flat_outdir") == 0) {
+    int tmp = atoi(value);
+    CHOLLA_ASSERT((tmp == 0) or (tmp == 1), "legacy_flat_outdir must be 1 or 0.");
+    parms->legacy_flat_outdir = tmp;
+  } else if (strcmp(name, "n_steps_limit") == 0) {
+    parms->n_steps_limit = atof(value);
   } else if (strcmp(name, "xmin") == 0) {
     parms->xmin = atof(value);
   } else if (strcmp(name, "ymin") == 0) {
@@ -366,9 +307,15 @@ void Parse_Param(char *name, char *value, struct Parameters *parms)
   } else if (strcmp(name, "prng_seed") == 0) {
     parms->prng_seed = atoi(value);
 #endif  // PARTICLES
-#ifdef SUPERNOVA
+#ifdef FEEDBACK
+  #ifndef NO_SN_FEEDBACK
   } else if (strcmp(name, "snr_filename") == 0) {
     strncpy(parms->snr_filename, value, MAXLEN);
+  #endif
+  #ifndef NO_WIND_FEEDBACK
+  } else if (strcmp(name, "sw_filename") == 0) {
+    strncpy(parms->sw_filename, value, MAXLEN);
+  #endif
 #endif
 #ifdef ROTATED_PROJECTION
   } else if (strcmp(name, "nxr") == 0) {
@@ -407,21 +354,18 @@ void Parse_Param(char *name, char *value, struct Parameters *parms)
     parms->Omega_L = atof(value);
   } else if (strcmp(name, "Omega_b") == 0) {
     parms->Omega_b = atof(value);
+  } else if (strcmp(name, "Omega_R") == 0) {
+    parms->Omega_R = atof(value);
+  } else if (strcmp(name, "w0") == 0) {
+    parms->w0 = atof(value);
+  } else if (strcmp(name, "wa") == 0) {
+    parms->wa = atof(value);
 #endif  // COSMOLOGY
 #ifdef TILED_INITIAL_CONDITIONS
   } else if (strcmp(name, "tile_length") == 0) {
     parms->tile_length = atof(value);
 #endif  // TILED_INITIAL_CONDITIONS
 
-#ifdef SET_MPI_GRID
-    // Set the MPI Processes grid [n_proc_x, n_proc_y, n_proc_z]
-  } else if (strcmp(name, "n_proc_x") == 0) {
-    parms->n_proc_x = atoi(value);
-  } else if (strcmp(name, "n_proc_y") == 0) {
-    parms->n_proc_y = atoi(value);
-  } else if (strcmp(name, "n_proc_z") == 0) {
-    parms->n_proc_z = atoi(value);
-#endif
   } else if (strcmp(name, "bc_potential_type") == 0) {
     parms->bc_potential_type = atoi(value);
 #ifdef CHEMISTRY_GPU
@@ -452,7 +396,73 @@ void Parse_Param(char *name, char *value, struct Parameters *parms)
     parms->grain_radius = atoi(value);
   #endif
 #endif
-  } else if (!Is_Param_Valid(name)) {
-    chprintf("WARNING: %s/%s: Unknown parameter/value pair!\n", name, value);
+  } else {
+    return false;
   }
+  return true;
+}
+
+/*! \brief Parses and sets a bunch of members of parms from pmap.
+ *
+ *  The goal is eventually get rid of the old-style function
+ */
+void Init_Param_Struct_Members(ParameterMap &pmap, struct Parameters *parms)
+{
+  // load the domain dimensions (abort with an error if one of these is missing)
+  parms->nx = pmap.value<int>("nx");
+  parms->ny = pmap.value<int>("ny");
+  parms->nz = pmap.value<int>("nz");
+  CHOLLA_ASSERT((parms->nx >= 0) and (parms->ny >= 0) and (parms->nz >= 0), "domain dimensions must be positive");
+
+#ifdef STATIC_GRAV
+  parms->custom_grav = pmap.value_or("custom_grav", 0);
+#endif
+
+  parms->tout = pmap.value<double>("tout");  // aborts if missing
+  CHOLLA_ASSERT(parms->tout >= 0.0, "tout parameter must be non-negative");
+
+  parms->outstep        = pmap.value<double>("outstep");  // aborts if missing
+  parms->n_steps_output = pmap.value_or("n_steps_output", 0);
+
+  // in the future, maybe we should provide a default value of 5/3 for gamma
+  parms->gamma = Real(pmap.value<double>("gamma"));
+  CHOLLA_ASSERT(parms->gamma > 1.0, "gamma parameter must be greater than one.");
+
+  // Set the MPI Processes grid [n_proc_x, n_proc_y, n_proc_z]
+  if (pmap.has_param("n_proc_x") or pmap.has_param("n_proc_y") or pmap.has_param("n_proc_z")) {
+    parms->n_proc_x = pmap.value<int>("n_proc_x");
+    parms->n_proc_y = pmap.value<int>("n_proc_y");
+    parms->n_proc_z = pmap.value<int>("n_proc_z");
+    CHOLLA_ASSERT((parms->n_proc_x > 0) and (parms->n_proc_y > 0) and (parms->n_proc_z > 0),
+                  "When specified, n_proc_x, n_proc_y, and n_proc_z must be positive");
+    // the following check also implicitly ensures that n_proc_[xyz] are all 1 without MPI
+    int product = parms->n_proc_x * parms->n_proc_y * parms->n_proc_z;
+    CHOLLA_ASSERT(product == nproc,
+                  "The product of n_proc_x, n_proc_y, and n_proc_z is %d. It doesn't match the "
+                  "number of processes, %d",
+                  product, nproc);
+  } else {
+    parms->n_proc_x = 0;
+    parms->n_proc_y = 0;
+    parms->n_proc_z = 0;
+  }
+
+#ifdef TEMPERATURE_FLOOR
+  if (not pmap.has_param("temperature_floor")) {
+    chprintf("WARNING: parameter file doesn't include temperature_floor parameter. Defaulting to value of 0!\n");
+  }
+  parms->temperature_floor = pmap.value_or("temperature_floor", 0.0);
+#endif
+#ifdef DENSITY_FLOOR
+  if (not pmap.has_param("density_floor")) {
+    chprintf("WARNING: parameter file doesn't include density_floor parameter. Defaulting to value of 0!\n");
+  }
+  parms->density_floor = pmap.value_or("density_floor", 0.0);
+#endif
+#ifdef SCALAR_FLOOR
+  if (not pmap.has_param("scalar_floor")) {
+    chprintf("WARNING: parameter file doesn't include scalar_floor parameter. Defaulting to value of 0!\n");
+  }
+  parms->scalar_floor = pmap.value_or("scalar_floor", 0.0);
+#endif
 }
