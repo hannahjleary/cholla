@@ -10,7 +10,7 @@ DFLAGS    += -DSIMPLE
 DFLAGS    += -DPPMP
 else
 DFLAGS    += -DVL
-DFLAGS    += -DPLMC
+DFLAGS    += -DPPMP
 endif
 
 # Apply a density and temperature floor
@@ -21,7 +21,7 @@ endif
 DFLAGS    += -DDE
 
 # Apply cooling on the GPU from precomputed tables
-DFLAGS    += -DCOOLING_GPU
+#DFLAGS    += -DCOOLING_GPU
 DFLAGS    += -DAVERAGE_SLOW_CELLS
 
 # Measure the Timing of the different stages
