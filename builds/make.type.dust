@@ -8,13 +8,12 @@ MPI_GPU   ?=
 
 DFLAGS    += -DMPI_CHOLLA
 DFLAGS    += -DPRECISION=2
-DFLAGS    += -DPLMC
+DFLAGS    += -DPPMP
 DFLAGS    += -DHLLC
 
 DFLAGS    += -DDE
 DFLAGS    += -DAVERAGE_SLOW_CELLS
 DFLAGS    += -DTEMPERATURE_FLOOR
-DFLAGS    += -DDENSITY_FLOOR
 
 DFLAGS    += -DVL
 
@@ -24,6 +23,8 @@ DFLAGS    += -DSCALAR_FLOOR
 
 # Define dust macro
 DFLAGS    += -DDUST
+
+# DFLAGS    += -DCLOUD_TRACKING
 
 # Apply the cooling in the GPU from precomputed tables
 DFLAGS    += -DCOOLING_GPU

@@ -320,9 +320,15 @@ struct Parameters {
   char scale_outputs_file[MAXLEN];
   #define EXPANSION_HISTORY_FILE_NAME "expansion_history.txt"
 #endif  // COSMOLOGY
+
 #ifdef TILED_INITIAL_CONDITIONS
   Real tile_length;
 #endif  // TILED_INITIAL_CONDITIONS
+
+#ifdef CLOUD_TRACKING
+  Real density_cloud_init;
+  Real density_wind_init;
+#endif
 
   // Set the MPI Processes grid [n_proc_x, n_proc_y, n_proc_z] (if they aren't provided, they are set to 0)
   int n_proc_x;

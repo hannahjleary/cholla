@@ -218,6 +218,12 @@ struct Header {
    *         AVERAGE_SLOW_CELLS macro isn't defined. */
   Real min_dt_slow;
 
+#ifdef CLOUD_TRACKING
+  Real density_cloud_init;
+  Real density_wind_init;
+  Real velocity_x_cloud_avg = 0;
+#endif  // CLOUD_TRACKING
+
   /*! \var t_wall
    *  \brief Wall time */
   Real t_wall;
@@ -688,7 +694,7 @@ class Grid3D
    * gravitational collapse */
   void Spherical_Overdensity_3D();
 
-  void Clouds();
+  void Clouds(struct Parameters P);
 
   void Uniform_Grid();
 
