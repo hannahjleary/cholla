@@ -22,7 +22,10 @@ void Cloud_Velocity_Reduction(Real *dev_conserved, int nx, int ny, int nz, Real 
                               int n_fields, Real density_cloud_init, Real density_wind_init, Real *mass_cloud,
                               Real *integrand_cloud)
 {
-  cuda_utilities::AutomaticLaunchParams static const launchParams(Cloud_Reduction_Kernel);
+  // cuda_utilities::AutomaticLaunchParams static const launchParams(Cloud_Reduction_Kernel);
+
+  dim3 dim1dGrid(ngrid, 1, 1);
+  dim3 dim1dBlock(TPB, 1, 1);
 
   cuda_utilities::DeviceVector<Real> dev_mass_cloud(1, true);
   cuda_utilities::DeviceVector<Real> dev_integrand_cloud(1, true);
@@ -32,7 +35,7 @@ void Cloud_Velocity_Reduction(Real *dev_conserved, int nx, int ny, int nz, Real 
   std::vector<Real> host_integrand_cloud{0};
 
   // .data() gets device vector pointers
-  hipLaunchKernelGGL(Cloud_Reduction_Kernel, launchParams.numBlocks, launchParams.threadsPerBlock, 0, 0, dev_conserved,
+  hipLaunchKernelGGL(Cloud_Reduction_Kernel, dim1dGrid, dim1dBlock, 0, 0, dev_conserved,
                      nx, ny, nz, dx, dy, dz, n_ghost, n_fields, density_cloud_init, density_wind_init,
                      dev_mass_cloud.data(), dev_integrand_cloud.data());
   cudaDeviceSynchronize();
@@ -49,10 +52,13 @@ void Cloud_Velocity_Reduction(Real *dev_conserved, int nx, int ny, int nz, Real 
 void Update_Grid_Frame(Real *dev_conserved, int nx, int ny, int nz, int n_ghost, int n_fields,
                        Real velocity_x_cloud_avg)
 {
-  cuda_utilities::AutomaticLaunchParams static const launchParams(Frame_Shift_Kernel);
+  // cuda_utilities::AutomaticLaunchParams static const launchParams(Frame_Shift_Kernel);
+
+  dim3 dim1dGrid(ngrid, 1, 1);
+  dim3 dim1dBlock(TPB, 1, 1);
 
   // .data() gets device vector pointers
-  hipLaunchKernelGGL(Frame_Shift_Kernel, launchParams.numBlocks, launchParams.threadsPerBlock, 0, 0, dev_conserved, nx,
+  hipLaunchKernelGGL(Frame_Shift_Kernel, dim1dGrid, dim1dBlock, 0, 0, dev_conserved, nx,
                      ny, nz, n_ghost, n_fields, velocity_x_cloud_avg);
   cudaDeviceSynchronize();
   //CudaCheckError();
