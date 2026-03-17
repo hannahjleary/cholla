@@ -31,7 +31,6 @@ DFLAGS += -DCLOUD_TRACKING
 # Measure the Timing of the different stages
 #DFLAGS    += -DCPU_TIME
 
-#DFLAGS    += -DCLOUD_TRACKING
 
 # Select output format
 # Can also add -DSLICES and -DPROJECTIONS
