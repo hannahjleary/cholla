@@ -23,7 +23,8 @@ void Cloud_Velocity_Reduction(Real *dev_conserved, int nx, int ny, int nz, Real 
                               Real *integrand_cloud)
 {
   // cuda_utilities::AutomaticLaunchParams static const launchParams(Cloud_Reduction_Kernel);
-
+  int n_cells = nx * ny * nz;
+  int ngrid = (n_cells + TPB - 1) / TPB;
   dim3 dim1dGrid(ngrid, 1, 1);
   dim3 dim1dBlock(TPB, 1, 1);
 
@@ -53,7 +54,8 @@ void Update_Grid_Frame(Real *dev_conserved, int nx, int ny, int nz, int n_ghost,
                        Real velocity_x_cloud_avg)
 {
   // cuda_utilities::AutomaticLaunchParams static const launchParams(Frame_Shift_Kernel);
-
+  int n_cells = nx * ny * nz;
+  int ngrid = (n_cells + TPB - 1) / TPB;
   dim3 dim1dGrid(ngrid, 1, 1);
   dim3 dim1dBlock(TPB, 1, 1);
 
