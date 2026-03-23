@@ -1308,7 +1308,7 @@ void Grid3D::Spherical_Overdensity_3D()
   }
 }
 
-/*! \fn void Clouds()
+/*! \fn void  ()
  *  \brief Bunch of clouds. */
 void Grid3D::Clouds(struct Parameters P)
 {
