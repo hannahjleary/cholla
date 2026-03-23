@@ -389,7 +389,7 @@ class Grid3D
   /*! Set the initial conditions based on already-parsed parameter info in the
    *  \ref Parameters arg or unparsed parameter-info in the \ref ParameterMap arg
    */
-  void Set_Initial_Conditions(Parameters P);
+  void Set_Initial_Conditions(Parameters P, const ParameterMap &pmap);
 
   /*! \fn void Get_Position(long i, long j, long k, Real *xpos, Real *ypos, Real
    * *zpos) \brief Get the cell-centered position based on cell index */
