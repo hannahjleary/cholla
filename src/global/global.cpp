@@ -422,11 +422,11 @@ void Init_Param_Struct_Members(ParameterMap &pmap, struct Parameters *parms)
   if (not pmap.has_param("density_cloud_init")) {
     chprintf("WARNING: parameter file doesn't include density_cloud_init parameter. Defaulting to value of 1e-24!\n");
   }
-  parms->scalar_floor = pmap.value_or("density_cloud_init", 1e-24);
+  parms->density_cloud_init = pmap.value_or("density_cloud_init", 1e-24);
   if (not pmap.has_param("density_wind_init")) {
     chprintf("WARNING: parameter file doesn't include density_wind_init parameter. Defaulting to value of 1e-26!\n");
   }
-  parms->scalar_floor = pmap.value_or("density_wind_init", 1e-26);
+  parms->density_wind_init = pmap.value_or("density_wind_init", 1e-26);
 #endif
 #ifdef DENSITY_FLOOR
   if (not pmap.has_param("density_floor")) {

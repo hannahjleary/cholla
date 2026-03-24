@@ -24,7 +24,7 @@
 #include "../utils/mhd_utilities.h"
 
 /*! Set the initial conditions based on info in the parameters structure. */
-void Grid3D::Set_Initial_Conditions(Parameters P, const ParameterMap &pmap)
+void Grid3D::Set_Initial_Conditions(Parameters P, ParameterMap &pmap)
 {
   Set_Domain_Properties(P);
   Set_Gammas(P.gamma);
@@ -66,7 +66,7 @@ void Grid3D::Set_Initial_Conditions(Parameters P, const ParameterMap &pmap)
   } else if (strcmp(P.init, "Spherical_Overdensity_3D") == 0) {
     Spherical_Overdensity_3D();
   } else if (strcmp(P.init, "Clouds") == 0) {
-    Clouds(P);
+    Clouds(pmap);
   } else if (strcmp(P.init, "Read_Grid") == 0) {
 #ifndef ONLY_PARTICLES
     Read_Grid(P);
@@ -1310,7 +1310,7 @@ void Grid3D::Spherical_Overdensity_3D()
 
 /*! \fn void  ()
  *  \brief Bunch of clouds. */
-void Grid3D::Clouds(struct Parameters P)
+void Grid3D::Clouds(ParameterMap &pmap)
 {
   int i, j, k, id;
   int istart, jstart, kstart, iend, jend, kend;
@@ -1350,10 +1350,10 @@ void Grid3D::Clouds(struct Parameters P)
   rho_bg = n_bg * mu * MP / DENSITY_UNIT;
   rho_cl = n_cl * mu * MP / DENSITY_UNIT;
 #ifdef CLOUD_TRACKING
-  rho_cl = P.density_cloud_init / DENSITY_UNIT;
-  rho_bg = P.density_wind_init / DENSITY_UNIT;
-  printf("Cloud initial density: %e\n", P.density_cloud_init);
-  printf("Wind initial density: %e\n", P.density_wind_init);
+  rho_cl = pmap.value_or("density_cloud_init", rho_cl) / DENSITY_UNIT;
+  rho_bg = pmap.value_or("density_wind_init", rho_bg) / DENSITY_UNIT;
+  printf("Cloud initial density: %e\n", rho_cl);
+  printf("Wind initial density: %e\n", rho_bg);
 #endif
   vx_bg = 100 * TIME_UNIT / KPC;
   // vx_c  = -200*TIME_UNIT/KPC; // convert from km/s to kpc/kyr

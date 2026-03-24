@@ -317,9 +317,9 @@ __global__ void Wind_Boundary_kernel(Real *c_device, int nx, int ny, int nz, int
   // same values as rho_bg and p_bg in cloud initial condition function
   density  = number_density * mu * MP / DENSITY_UNIT;
   pressure = number_density * KB * temperature / PRESSURE_UNIT;
-#ifdef CLOUD_TRACKING
-  density = density_wind_init / DENSITY_UNIT;
-#endif
+// #ifdef CLOUD_TRACKING
+//   density = density_wind_init / DENSITY_UNIT;
+// #endif
 
   velocity_x = 100 * TIME_UNIT / KPC;  // km/s * (cholla unit conversion)
   velocity_y = 0.0;
