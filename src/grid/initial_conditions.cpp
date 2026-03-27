@@ -1346,7 +1346,7 @@ void Grid3D::Clouds(ParameterMap &pmap)
   }
 
   n_bg   = 1.0e-2;
-  n_cl   = 1;
+  n_cl   = 1.0;
   rho_bg = n_bg * mu * MP / DENSITY_UNIT;
   rho_cl = n_cl * mu * MP / DENSITY_UNIT;
 #ifdef CLOUD_TRACKING
@@ -1361,7 +1361,7 @@ void Grid3D::Clouds(ParameterMap &pmap)
   vy_bg = vy_cl = 0.0;
   vz_bg = vz_cl = 0.0;
   T_bg          = 1e6;
-  // T_cl          = 3e4;
+  T_cl          = 1e4;
   p_bg          = n_bg * KB * T_bg / PRESSURE_UNIT;
   p_cl          = p_bg;
 
