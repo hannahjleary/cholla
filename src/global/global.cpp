@@ -106,7 +106,7 @@ char *Trim(char *s)
 const std::set<std::string> optionalParams = {"flag_delta",   "ddelta_dt",  "n_delta", "Lz",  "Lx", "phi",
                                               "theta",        "delta",      "nzr",     "nxr", "H0", "Omega_M",
                                               "Omega_L",      "Omega_R",    "Omega_K", "w0",  "wa", "Init_redshift",
-                                              "End_redshift", "tile_length"};  // NOLINT
+                                              "End_redshift", "tile_length", "density_cloud_init", "density_wind_init"};  // NOLINT
 
 bool Old_Style_Parse_Param(const char *name, const char *value, struct Parameters *parms);
 
@@ -423,6 +423,16 @@ void Init_Param_Struct_Members(ParameterMap &pmap, struct Parameters *parms)
     chprintf("WARNING: parameter file doesn't include density_floor parameter. Defaulting to value of 0!\n");
   }
   parms->density_floor = pmap.value_or("density_floor", 0.0);
+#endif
+#ifdef CLOUD_TRACKING
+  if (not pmap.has_param("density_cloud_init")) {
+    chprintf("WARNING: parameter file doesn't include density_cloud_init parameter. Defaulting to value of 1e-24!\n");
+  }
+  parms->scalar_floor = pmap.value_or("density_cloud_init", 1e-24);
+  if (not pmap.has_param("density_wind_init")) {
+    chprintf("WARNING: parameter file doesn't include density_wind_init parameter. Defaulting to value of 1e-26!\n");
+  }
+  parms->scalar_floor = pmap.value_or("density_wind_init", 1e-26);
 #endif
 #ifdef SCALAR_FLOOR
   if (not pmap.has_param("scalar_floor")) {
