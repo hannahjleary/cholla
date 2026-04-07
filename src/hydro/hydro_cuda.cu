@@ -1213,7 +1213,7 @@ __global__ void Scalar_Floor_Kernel(Real *dev_conserved, int nx, int ny, int nz,
     scalar = dev_conserved[id + n_cells * field_num];
 
     if (scalar < scalar_floor) {
-      //printf("###Thread scalar change  %f -> %f \n", scalar, scalar_floor);
+      // printf("###Thread scalar change  %f -> %f \n", scalar, scalar_floor);
       dev_conserved[id + n_cells * field_num] = scalar_floor;
     }
   }

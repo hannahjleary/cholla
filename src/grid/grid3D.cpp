@@ -34,8 +34,6 @@
   #include "../utils/parallel_omp.h"
 #endif
 
-<<<<<<< HEAD
-=======
 #ifdef COOLING_GPU
   #include "../cooling/cooling_cuda.h"  // provides Cooling_Update
 #endif
@@ -44,7 +42,6 @@
   #include "../cloud_tracking/cloud_tracking.h"
 #endif
 
->>>>>>> other/dev-scalar-floor-cloud-tracking
 #ifdef DUST
   #include "../dust/dust_cuda.h"  // provides Dust_Update
 #endif
@@ -141,15 +138,10 @@ void Grid3D::Initialize(struct Parameters *P)
   C_cfl = 0.3;
 
 #ifdef AVERAGE_SLOW_CELLS
-<<<<<<< HEAD
   H.min_dt_slow = 1e-100;  // Initialize the minumum dt to a tiny number
 #else
   H.min_dt_slow = -1.0;
 #endif  // AVERAGE_SLOW_CELLS
-=======
-  H.min_dt_slow = 0.024;  // Initialize the minumum dt to a tiny number
-#endif                   // AVERAGE_SLOW_CELLS
->>>>>>> other/dev-scalar-floor-cloud-tracking
 
 #ifdef CLOUD_TRACKING
   H.density_cloud_init = P->density_cloud_init;
@@ -578,8 +570,6 @@ Real Grid3D::Update_Hydro_Grid(std::function<void(Grid3D &)> &chemistry_callback
   }
 
   #endif  // CLOUD_TRACKING
-
-#endif  // CUDA
 
 #ifdef CHEMISTRY_GPU
   // Update the H and He ionization fractions and apply cooling and photoheating

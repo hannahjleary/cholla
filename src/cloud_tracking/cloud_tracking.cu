@@ -23,7 +23,6 @@ void Cloud_Velocity_Reduction(Real *dev_conserved, int nx, int ny, int nz, Real 
                               Real *integrand_cloud)
 {
   // cuda_utilities::AutomaticLaunchParams static const launchParams(Cloud_Reduction_Kernel);
-
   int n_cells = nx * ny * nz;
   int ngrid = (n_cells + TPB - 1) / TPB;
   dim3 dim1dGrid(ngrid, 1, 1);

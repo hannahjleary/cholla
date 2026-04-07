@@ -24,7 +24,7 @@
 #include "../utils/mhd_utilities.h"
 
 /*! Set the initial conditions based on info in the parameters structure. */
-void Grid3D::Set_Initial_Conditions(Parameters P, const ParameterMap &pmap)
+void Grid3D::Set_Initial_Conditions(Parameters P, ParameterMap &pmap)
 {
   Set_Domain_Properties(P);
   Set_Gammas(P.gamma);
@@ -66,7 +66,7 @@ void Grid3D::Set_Initial_Conditions(Parameters P, const ParameterMap &pmap)
   } else if (strcmp(P.init, "Spherical_Overdensity_3D") == 0) {
     Spherical_Overdensity_3D();
   } else if (strcmp(P.init, "Clouds") == 0) {
-    Clouds(P);
+    Clouds(pmap);
   } else if (strcmp(P.init, "Read_Grid") == 0) {
 #ifndef ONLY_PARTICLES
     Read_Grid(P);
@@ -1308,9 +1308,9 @@ void Grid3D::Spherical_Overdensity_3D()
   }
 }
 
-/*! \fn void Clouds()
+/*! \fn void  ()
  *  \brief Bunch of clouds. */
-void Grid3D::Clouds(struct Parameters P)
+void Grid3D::Clouds(ParameterMap &pmap)
 {
   int i, j, k, id;
   int istart, jstart, kstart, iend, jend, kend;
@@ -1324,7 +1324,7 @@ void Grid3D::Clouds(struct Parameters P)
   Real p_bg, p_cl;       // background and cloud pressure
   Real mu   = 0.6;       // mean atomic weight
   int N_cl  = 1;         // number of clouds
-  Real R_cl = 0.1;     // cloud radius in code units (kpc)
+  Real R_cl = 0.05;     // cloud radius in code units (kpc)
   Real cl_pos[N_cl][3];  // array of cloud positions
   Real r;
 
@@ -1339,29 +1339,29 @@ void Grid3D::Clouds(struct Parameters P)
 
   // single centered cloud setup
   for (int nn = 0; nn < N_cl; nn++) {
-    cl_pos[nn][0] = 0.075 * H.xdglobal;
+    cl_pos[nn][0] = 0.1 * H.xdglobal;
     cl_pos[nn][1] = 0.5 * H.ydglobal;
     cl_pos[nn][2] = 0.5 * H.zdglobal;
     printf("Cloud positions: %f %f %f\n", cl_pos[nn][0], cl_pos[nn][1], cl_pos[nn][2]);
   }
 
   n_bg   = 1.0e-2;
-  n_cl   = 10;
+  n_cl   = 1.0;
   rho_bg = n_bg * mu * MP / DENSITY_UNIT;
   rho_cl = n_cl * mu * MP / DENSITY_UNIT;
 #ifdef CLOUD_TRACKING
-  rho_cl = P.density_cloud_init / DENSITY_UNIT;
-  rho_bg = P.density_wind_init / DENSITY_UNIT;
-  printf("Cloud initial density: %e\n", P.density_cloud_init);
-  printf("Wind initial density: %e\n", P.density_wind_init);
+  rho_cl = pmap.value_or("density_cloud_init", rho_cl) / DENSITY_UNIT;
+  rho_bg = pmap.value_or("density_wind_init", rho_bg) / DENSITY_UNIT;
+  printf("Cloud initial density: %e\n", rho_cl);
+  printf("Wind initial density: %e\n", rho_bg);
 #endif
-  vx_bg = 500 * TIME_UNIT / KPC;
+  vx_bg = 100 * TIME_UNIT / KPC;
   // vx_c  = -200*TIME_UNIT/KPC; // convert from km/s to kpc/kyr
   vx_cl = 0 * TIME_UNIT / KPC;
   vy_bg = vy_cl = 0.0;
   vz_bg = vz_cl = 0.0;
-  T_bg          = 3e6;
-  // T_cl          = 3e4;
+  T_bg          = 1e6;
+  T_cl          = 1e4;
   p_bg          = n_bg * KB * T_bg / PRESSURE_UNIT;
   p_cl          = p_bg;
 

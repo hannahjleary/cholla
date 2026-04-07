@@ -9,10 +9,14 @@ MPI_GPU   ?=
 DFLAGS    += -DMPI_CHOLLA
 DFLAGS    += -DPRECISION=2
 <<<<<<< HEAD
+<<<<<<< HEAD
 DFLAGS    += -DPLMC
 =======
 DFLAGS    += -DPPMP
 >>>>>>> other/dev-scalar-floor-cloud-tracking
+=======
+DFLAGS    += -DPPMP
+>>>>>>> dev-cloud-tracking
 DFLAGS    += -DHLLC
 
 DFLAGS    += -DDE

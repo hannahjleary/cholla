@@ -117,7 +117,7 @@ __inline__ __device__ Real Block_Reduce_Add(Real val)
   return val;
 }
 
-  #ifndef O_HIP
+#ifndef O_HIP
 // =====================================================================
 // This section handles the atomics. It is complicated because CUDA
 // doesn't currently support atomics with non-integral types.
