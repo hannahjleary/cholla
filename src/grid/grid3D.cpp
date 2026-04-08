@@ -489,7 +489,7 @@ Real Grid3D::Update_Hydro_Grid(std::function<void(Grid3D &)> &chemistry_callback
   #endif  // DUST
 
   #ifdef CLOUD_TRACKING
-  if ((H.n_step % 20) == 0) {
+
   Real mass_cloud, integrand_cloud, velocity_x_cloud_avg, mass_cloud_tot;
   // Do the grid-wide reduction to get the sum of rho*vx*V and the total mass for the entire cloud
   Cloud_Velocity_Reduction(C.device, H.nx, H.ny, H.nz, H.dx, H.dy, H.dz, H.n_ghost, H.n_fields, H.density_cloud_init,
@@ -567,7 +567,7 @@ Real Grid3D::Update_Hydro_Grid(std::function<void(Grid3D &)> &chemistry_callback
   #endif
   // Subtract this timestep's reference frame shift off from the entire grid
   Update_Grid_Frame(C.device, H.nx, H.ny, H.nz, H.n_ghost, H.n_fields, velocity_x_cloud_avg);
-  }
+
 
   #endif  // CLOUD_TRACKING
 
