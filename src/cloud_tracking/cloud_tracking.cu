@@ -22,7 +22,7 @@ void Cloud_Velocity_Reduction(Real *dev_conserved, int nx, int ny, int nz, Real 
                               int n_fields, Real density_cloud_init, Real density_wind_init, Real *mass_cloud,
                               Real *integrand_cloud)
 {
-  // cuda_utilities::AutomaticLaunchParams static const launchParams(Cloud_Reduction_Kernel);
+  cuda_utilities::AutomaticLaunchParams static const launchParams(Cloud_Reduction_Kernel);
   int n_cells = nx * ny * nz;
   int ngrid = (n_cells + TPB - 1) / TPB;
   dim3 dim1dGrid(ngrid, 1, 1);
@@ -36,9 +36,12 @@ void Cloud_Velocity_Reduction(Real *dev_conserved, int nx, int ny, int nz, Real 
   std::vector<Real> host_integrand_cloud{0};
 
   // .data() gets device vector pointers
-  hipLaunchKernelGGL(Cloud_Reduction_Kernel, dim1dGrid, dim1dBlock, 0, 0, dev_conserved,
-                     nx, ny, nz, dx, dy, dz, n_ghost, n_fields, density_cloud_init, density_wind_init,
-                     dev_mass_cloud.data(), dev_integrand_cloud.data());
+  // hipLaunchKernelGGL(Cloud_Reduction_Kernel, dim1dGrid, dim1dBlock, 0, 0, dev_conserved,
+  //                    nx, ny, nz, dx, dy, dz, n_ghost, n_fields, density_cloud_init, density_wind_init,
+  //                    dev_mass_cloud.data(), dev_integrand_cloud.data());
+  hipLaunchKernelGGL(Cloud_Reduction_Kernel, launchParams.get_numBlocks(), launchParams.get_threadsPerBlock(), 0, 0, dev_conserved,
+                      nx, ny, nz, dx, dy, dz, n_ghost, n_fields, density_cloud_init, density_wind_init,
+                      dev_mass_cloud.data(), dev_integrand_cloud.data());
   cudaDeviceSynchronize();
   // CudaCheckError();
 
@@ -53,13 +56,15 @@ void Cloud_Velocity_Reduction(Real *dev_conserved, int nx, int ny, int nz, Real 
 void Update_Grid_Frame(Real *dev_conserved, int nx, int ny, int nz, int n_ghost, int n_fields,
                        Real velocity_x_cloud_avg)
 {
-  // cuda_utilities::AutomaticLaunchParams static const launchParams(Frame_Shift_Kernel);
+  cuda_utilities::AutomaticLaunchParams static const launchParams(Frame_Shift_Kernel);
   int n_cells = nx * ny * nz;
   int ngrid = (n_cells + TPB - 1) / TPB;
   dim3 dim1dGrid(ngrid, 1, 1);
   dim3 dim1dBlock(TPB, 1, 1);
   // .data() gets device vector pointers
-  hipLaunchKernelGGL(Frame_Shift_Kernel, dim1dGrid, dim1dBlock, 0, 0, dev_conserved, nx,
+  // hipLaunchKernelGGL(Frame_Shift_Kernel, dim1dGrid, dim1dBlock, 0, 0, dev_conserved, nx,
+  //                    ny, nz, n_ghost, n_fields, velocity_x_cloud_avg);
+  hipLaunchKernelGGL(Frame_Shift_Kernel, launchParams.get_numBlocks(), launchParams.get_threadsPerBlock(), 0, 0, dev_conserved, nx,
                      ny, nz, n_ghost, n_fields, velocity_x_cloud_avg);
   cudaDeviceSynchronize();
   //CudaCheckError();
@@ -88,6 +93,8 @@ __global__ void Cloud_Reduction_Kernel(Real *dev_conserved, int nx, int ny, int 
       mass       = density * dx * dy * dz;
       // if ((density * DENSITY_UNIT) >= (pow(density_cloud_init * density_wind_init, 0.5))) {
       if ((density * DENSITY_UNIT) >= (density_cloud_init / 3)) {
+        // printf("density_cloud_init/3 %e\n", density_clout_init/3);
+        printf("id: %e, density: %e\n", id, density);
         mass_stride += mass;
         // (Shin et al. (2008) eq. 9)
         integrand_stride += velocity_x * density * dx * dy * dz;
