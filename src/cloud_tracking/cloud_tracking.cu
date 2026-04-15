@@ -82,6 +82,9 @@ __global__ void Cloud_Reduction_Kernel(Real *dev_conserved, int nx, int ny, int 
 
   Real density, velocity_x, mass;
 
+  Real criteria = density_cloud_init/3;
+  // printf("density_cloud_init: %e\n", density_cloud_init);
+
   // Grid stride loop
   for (size_t id = threadIdx.x + blockIdx.x * blockDim.x; id < n_cells; id += blockDim.x * gridDim.x) {
     cuda_utilities::compute3DIndices(id, nx, ny, xid, yid, zid);
@@ -93,8 +96,8 @@ __global__ void Cloud_Reduction_Kernel(Real *dev_conserved, int nx, int ny, int 
       mass       = density * dx * dy * dz;
       // if ((density * DENSITY_UNIT) >= (pow(density_cloud_init * density_wind_init, 0.5))) {
       if ((density * DENSITY_UNIT) >= (density_cloud_init / 3)) {
-        // printf("density_cloud_init/3 %e\n", density_clout_init/3);
-        printf("id: %e, density: %e\n", id, density);
+        // printf("density_cloud_init/3 %e\n", criteria);
+        // printf("id: %e, density: %e\n", id, density);
         mass_stride += mass;
         // (Shin et al. (2008) eq. 9)
         integrand_stride += velocity_x * density * dx * dy * dz;
