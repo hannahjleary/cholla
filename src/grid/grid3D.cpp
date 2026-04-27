@@ -18,6 +18,8 @@
 #include "../integrators/simple_1D_cuda.h"
 #include "../integrators/simple_2D_cuda.h"
 #include "../integrators/simple_3D_cuda.h"
+#include "../io/ParameterMap.h"
+#include "../io/WriterManager.h"
 #include "../io/io.h"
 #include "../utils/DeviceVector.h"
 #include "../utils/error_handling.h"
@@ -562,6 +564,8 @@ Real Grid3D::Update_Hydro_Grid(std::function<void(Grid3D &)> &chemistry_callback
 
   // chprintf("Average cloud velocity = %e km/s\n", velocity_x_cloud_avg * KPC / TIME_UNIT);
   // chprintf("Mass = %e M_sun\n", mass_reduced);
+  std::string message = "Average cloud velocity = " + std::string(velocity_x_cloud_avg * KPC / TIME_UNIT) + " km/s\n";
+  Write_Message_To_Log_File(message.c_str());
 
   #ifdef MPI_CHOLLA
   MPI_Barrier(world);
