@@ -493,7 +493,7 @@ Real Grid3D::Update_Hydro_Grid(std::function<void(Grid3D &)> &chemistry_callback
   #ifdef CLOUD_TRACKING
   if ((H.n_step % 20) == 0) {
 
-  Real mass_cloud, integrand_cloud, velocity_x_cloud_avg, mass_cloud_tot;
+  Real mass_cloud, integrand_cloud, velocity_x_cloud_avg, mass_cloud_tot, velocity_cloud_avg_curr;
   // Do the grid-wide reduction to get the sum of rho*vx*V and the total mass for the entire cloud
   Cloud_Velocity_Reduction(C.device, H.nx, H.ny, H.nz, H.dx, H.dy, H.dz, H.n_ghost, H.n_fields, H.density_cloud_init,
                            H.density_wind_init, &mass_cloud, &integrand_cloud);
@@ -560,12 +560,14 @@ Real Grid3D::Update_Hydro_Grid(std::function<void(Grid3D &)> &chemistry_callback
   // Update the cumulative reference frame shift
   H.velocity_x_cloud_avg += velocity_x_cloud_avg;
 
+  H.velocity_cloud_avg_curr = H.velocity_x_cloud_avg;
+
   // printf("cumulative velocity: %e\n", H.velocity_x_cloud_avg);
 
   // chprintf("Average cloud velocity = %e km/s\n", velocity_x_cloud_avg * KPC / TIME_UNIT);
   // chprintf("Mass = %e M_sun\n", mass_reduced);
-  std::string message = "Average cloud velocity = " + std::string(velocity_x_cloud_avg * KPC / TIME_UNIT) + " km/s\n";
-  Write_Message_To_Log_File(message.c_str());
+  // std::string message = "Average cloud velocity = " + std::string(velocity_x_cloud_avg * KPC / TIME_UNIT) + " km/s\n";
+  // Write_Message_To_Log_File(message.c_str());
 
   #ifdef MPI_CHOLLA
   MPI_Barrier(world);
