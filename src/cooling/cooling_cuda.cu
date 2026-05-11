@@ -176,29 +176,30 @@ __global__ void cooling_kernel(Real *dev_conserved, int nx, int ny, int nz, int 
     // calculate cooling rate per volume
     T = T_init;
     // call the cooling function
-    cool = recipe.cool_rate(n, T);
-
-    // calculate change in temperature given dt
-    del_T = cool * dt * TIME_UNIT * (gamma - 1.0) / (n * KB);
-
-    // limit change in temperature to 1% (we use fabs for when heating dominates)
-    while (fabs(del_T / T) > 0.01) {
-      // what dt gives del_T with a magnitude of 0.01*T? (we use fabs for cases when heating dominates)
-      dt_sub = fabs(0.01 * T * n * KB / (cool * TIME_UNIT * (gamma - 1.0)));
-      // apply that dt
-      T -= cool * dt_sub * TIME_UNIT * (gamma - 1.0) / (n * KB);
-      // how much time is left from the original timestep?
-      dt -= dt_sub;
-
-      // calculate cooling again
+    if (T < 9e5){
       cool = recipe.cool_rate(n, T);
-      // calculate new change in temperature
+
+      // calculate change in temperature given dt
       del_T = cool * dt * TIME_UNIT * (gamma - 1.0) / (n * KB);
+
+      // limit change in temperature to 1% (we use fabs for when heating dominates)
+      while (fabs(del_T / T) > 0.01) {
+        // what dt gives del_T with a magnitude of 0.01*T? (we use fabs for cases when heating dominates)
+        dt_sub = fabs(0.01 * T * n * KB / (cool * TIME_UNIT * (gamma - 1.0)));
+        // apply that dt
+        T -= cool * dt_sub * TIME_UNIT * (gamma - 1.0) / (n * KB);
+        // how much time is left from the original timestep?
+        dt -= dt_sub;
+
+        // calculate cooling again
+        cool = recipe.cool_rate(n, T);
+        // calculate new change in temperature
+        del_T = cool * dt * TIME_UNIT * (gamma - 1.0) / (n * KB);
+      }
+
+      // calculate final temperature
+      T -= del_T;
     }
-
-    // calculate final temperature
-    T -= del_T;
-
     // adjust value of energy based on total change in temperature
     del_T = T_init - T;  // total change in T
     E -= n * KB * del_T / ((gamma - 1.0) * ENERGY_UNIT);
@@ -384,7 +385,6 @@ struct CoolRecipeCIE {
   }
 };
 
-
 /*! \brief Uses texture mapping to interpolate Cloudy cooling/heating
  *         tables at z = 0 with solar metallicity and an HM05 UV background. */
 class CoolRecipeCloudy
@@ -500,7 +500,6 @@ class CoolRecipeCloudyAndPhotoHeating
   }
 };
 
-
 /*! \brief Analytic cooling/heating recipe that roughly matches the "TI" cooling runs shown in
  *     in [Kim & Ostriker 2015](https://ui.adsabs.harvard.edu/abs/2015ApJ...802...99K/abstract)
  *
@@ -569,7 +568,7 @@ std::function<void(Grid3D &)> configure_cooling_callback(std::string kind, Param
                   photoelectric_n_av_parname, use_photoelectric_parname);
     photoelectric_fn = PhotoelectricHeatingModel{0.0};  // this means that there isn't heating
   }
-  bool metallicity_dependent = pmap.value_or("chemistry.metallicity_dependent", false);
+
   // Next, we branch based on the cooling-recipe
   if (kind == "tabulated-cloudy") {
     // since photoelectric_fn can be configured to be inactive, we could probably just
@@ -588,18 +587,13 @@ std::function<void(Grid3D &)> configure_cooling_callback(std::string kind, Param
   } else if (kind == "piecewise-cie") {
     CHOLLA_ASSERT(not photoelectric_fn.is_active(),
                   "The \"%s\" cooling recipe is **NOT** compatible with photoelectric heating", kind.c_str());
-    CHOLLA_ASSERT(not metallicity_dependent,
-                  "The \"%s\" cooling recipe is **NOT** compatible with metallicity dependent cooling", kind.c_str());
     CoolRecipeCIE recipe{};
     CoolingUpdateExecutor<CoolRecipeCIE> updater(recipe);
     return {updater};
   } else if (kind == "piecewise-ti") {
-    CHOLLA_ASSERT(not metallicity_dependent,
-                  "The \"%s\" cooling recipe is **NOT** compatible with metallicity dependent cooling", kind.c_str());
     CoolRecipeTI recipe{photoelectric_fn};
     CoolingUpdateExecutor<CoolRecipeTI> updater(recipe);
     return {updater};
   }
   return {};
 }
-
