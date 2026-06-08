@@ -29,7 +29,6 @@ DFLAGS += -DCLOUD_TRACKING
 # Measure the Timing of the different stages
 #DFLAGS    += -DCPU_TIME
 
-
 # Select output format
 # Can also add -DSLICES and -DPROJECTIONS
 OUTPUT    ?=  -DOUTPUT -DHDF5 
