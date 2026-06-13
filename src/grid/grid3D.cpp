@@ -18,9 +18,14 @@
 #include "../integrators/simple_1D_cuda.h"
 #include "../integrators/simple_2D_cuda.h"
 #include "../integrators/simple_3D_cuda.h"
+#include "../io/ParameterMap.h"
+#include "../io/WriterManager.h"
 #include "../io/io.h"
 #include "../utils/DeviceVector.h"
 #include "../utils/error_handling.h"
+#ifdef COOLING_GPU
+  #include "../cooling/cooling_cuda.h"  // provides Cooling_Update
+#endif
 #ifdef MPI_CHOLLA
   #include <mpi.h>
   #ifdef HDF5
