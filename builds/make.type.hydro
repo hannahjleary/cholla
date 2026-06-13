@@ -10,12 +10,12 @@ DFLAGS    += -DSIMPLE
 DFLAGS    += -DPPMP
 else
 DFLAGS    += -DVL
-DFLAGS    += -DPPMC
+DFLAGS    += -DPLMC
 endif
 
 # Apply a density and temperature floor
-#DFLAGS    += -DDENSITY_FLOOR
-#DFLAGS    += -DTEMPERATURE_FLOOR
+DFLAGS    += -DDENSITY_FLOOR
+DFLAGS    += -DTEMPERATURE_FLOOR
 
 # Solve the Gas Internal Energy using a Dual Energy Formalism
 DFLAGS    += -DDE

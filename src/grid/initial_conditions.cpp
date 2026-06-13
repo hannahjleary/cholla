@@ -1349,7 +1349,7 @@ void Grid3D::Clouds(ParameterMap &pmap)
   n_cl   = 1.0;
   rho_bg = n_bg * mu * MP / DENSITY_UNIT;
   rho_cl = n_cl * mu * MP / DENSITY_UNIT;
-  vx_bg  = 1000.0 * TIME_UNIT / KPC;
+  vx_bg  = 100.0 * TIME_UNIT / KPC;
   vx_cl = 0.0 * TIME_UNIT / KPC;
   vy_bg = vy_cl = 0.0;
   vz_bg = vz_cl = 0.0;
