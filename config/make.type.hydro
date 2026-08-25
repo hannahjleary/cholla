@@ -14,7 +14,7 @@ DFLAGS    += -DPLMC
 endif
 
 # Apply a density and temperature floor
-DFLAGS    += -DDENSITY_FLOOR
+#DFLAGS    += -DDENSITY_FLOOR
 DFLAGS    += -DTEMPERATURE_FLOOR
 
 # Solve the Gas Internal Energy using a Dual Energy Formalism
@@ -25,7 +25,8 @@ DFLAGS    += -DTEMPERATURE_FLOOR
 
 # Select output format
 # Can also add -DSLICES and -DPROJECTION
-OUTPUT    ?=  -DOUTPUT -DHDF5
+OUTPUT    +=  -DOUTPUT -DHDF5
+#DFLAGS    +=  -DSLICES 
 DFLAGS    += $(OUTPUT)
 
 #Select if the Hydro Conserved data will reside in the GPU
