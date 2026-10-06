@@ -30,10 +30,13 @@ DFLAGS += -DCLOUD_TRACKING
 # Select output format
 # Can also add -DSLICES and -DPROJECTION
 OUTPUT    ?=  -DOUTPUT -DHDF5
+DFLAGS    +=  -DSLICES -DPROJECTION
 DFLAGS    += $(OUTPUT)
 
-DFLAGS += -DSLICES 
-DFLAGS += -DPROJECTION
+# Enable metals
+DFLAGS   += -DSCALAR
+DFLAGS   += -DSCALAR_FLOOR
+DFLAGS   += -DMETALS
 
 #Select if the Hydro Conserved data will reside in the GPU
 #and the MPI transfers are done from the GPU

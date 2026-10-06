@@ -85,6 +85,7 @@
 #configurefile_define SCALAR
 #configurefile_define BASIC_SCALAR
 #configurefile_define DUST
+#configurefile_define METALS
 
 // When defined, cloud-tracking is enabled
 #configurefile_define CLOUD_TRACKING

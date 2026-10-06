@@ -339,6 +339,12 @@ class Grid3D
      */
     Real *dust_density;
   #endif
+  #ifdef METALS
+    /*! \var metal_density
+     *  \brief Array containing the metal densities.
+     */
+    Real *metal_density;
+  #endif
 #endif  // SCALAR
 
 #ifdef MHD
@@ -385,7 +391,7 @@ class Grid3D
     /*! pointer to conserved variable on device */
     Real *device;
     Real *d_density, *d_momentum_x, *d_momentum_y, *d_momentum_z, *d_Energy, *d_scalar, *d_basic_scalar,
-        *d_dust_density, *d_magnetic_x, *d_magnetic_y, *d_magnetic_z, *d_GasEnergy;
+        *d_dust_density, *d_metal_density, *d_magnetic_x, *d_magnetic_y, *d_magnetic_z, *d_GasEnergy;
 
     /*! pointer to gravitational potential on device
      *  - This is primarily used to hold the extrapolated potential
@@ -493,7 +499,7 @@ class Grid3D
    *
    * \param[in] P the parameters struct.
    */
-  void Constant(Parameters const &P);
+  void Constant(Parameters const &P, ParameterMap &pmap);
 
   /*!
    * \brief Sine wave perturbation.
@@ -578,12 +584,12 @@ class Grid3D
    * profile. */
   void Disk_3D(Parameters P);
 
-  /*! \fn void Set_Boundary_Conditions(Parameters P )
+  /*! \fn void Set_Boundary_Conditions(Parameters P)
    *  \brief Set the boundary conditions based on info in the parameters
    * structure. */
   void Set_Boundary_Conditions(Parameters P);
 
-  /*! \fn void Set_Boundary_Conditions_Grid(Parameters P )
+  /*! \fn void Set_Boundary_Conditions_Grid(Parameters P)
    *  \brief Set the boundary conditions for all components based on info in the
    * parameters structure. */
   void Set_Boundary_Conditions_Grid(Parameters P);
@@ -600,13 +606,13 @@ class Grid3D
    *  \brief Set the extents of the ghost region we are initializing. */
   void Set_Boundary_Extents(int dir, int *imin, int *imax);
 
-  /*! \fn void Custom_Boundary(char bcnd[MAXLEN])
+  /*! \fn void Custom_Boundary(char bcnd[MAXLEN], Parameters P)
    *  \brief Select appropriate custom boundary function. */
-  void Custom_Boundary(char bcnd[MAXLEN]);
+  void Custom_Boundary(char bcnd[MAXLEN], Parameters P);
 
-  /*! \fn void Wind_Boundary()
+  /*! \fn void Wind_Boundary(Parameters P)
    *  \brief Apply a constant wind to the -x boundary. */
-  void Wind_Boundary();
+  void Wind_Boundary(struct Parameters P);
 
   /*! \fn void Noh_Boundary()
    *  \brief Apply analytic boundary conditions to +x, +y (and +z) faces,
@@ -776,7 +782,6 @@ class Grid3D
   #endif  // MPI_CHOLLA
   void Transfer_Particles_Density_Boundaries(struct Parameters P);
   void Copy_Particles_Density_Buffer_Device_to_Host(int direction, int side, Real *buffer_d, Real *buffer_h);
-  // void Transfer_Particles_Boundaries( struct Parameters P );
   void WriteData_Particles(struct Parameters P, int nfile, const FnameTemplate &fname_template);
   void OutputData_Particles(struct Parameters P, int nfile, const FnameTemplate &fname_template);
   void Load_Particles_Data(struct Parameters P);

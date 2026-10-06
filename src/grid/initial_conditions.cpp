@@ -32,7 +32,7 @@ void Grid3D::Set_Initial_Conditions(Parameters P, ParameterMap &pmap)
   Set_Gammas(P.gamma);
 
   if (strcmp(P.init, "Constant") == 0 or strcmp(P.init, "Isolated_Stellar_Cluster") == 0) {
-    Constant(P);
+    Constant(P, pmap);
   } else if (strcmp(P.init, "Sound_Wave") == 0) {
     Sound_Wave(P);
   } else if (strcmp(P.init, "Linear_Wave") == 0) {
@@ -189,13 +189,15 @@ void Grid3D::Set_Domain_Properties(struct Parameters P)
 
 /*! \fn void Constant(Real rho, Real vx, Real vy, Real vz, Real P, Real Bx, Real
  * By, Real Bz) \brief Constant gas properties. */
-void Grid3D::Constant(Parameters const &P)
+void Grid3D::Constant(Parameters const &P, ParameterMap &pmap)
 {
   int i, j, k, id;
   int istart, jstart, kstart, iend, jend, kend;
   Real x_pos, y_pos, z_pos;
   Real mu = 0.6;
   Real n, T;
+
+  double Z = pmap.value_or("metallicity", 1.0);
 
   istart = H.n_ghost;
   iend   = H.nx - H.n_ghost;
@@ -237,6 +239,9 @@ void Grid3D::Constant(Parameters const &P)
           C.momentum_y[id] = P.rho * P.vy;
           C.momentum_z[id] = P.rho * P.vz;
           C.Energy[id]     = P.P / (gama - 1.0) + 0.5 * P.rho * (P.vx * P.vx + P.vy * P.vy + P.vz * P.vz);
+#ifdef METALS
+          C.metal_density[id] = Z * SOLAR_METAL_MASS_FRAC * P.rho;
+#endif
 #ifdef DE
           C.GasEnergy[id] = P.P / (gama - 1.0);
 #endif  // DE
@@ -244,7 +249,6 @@ void Grid3D::Constant(Parameters const &P)
         if (i == istart && j == jstart && k == kstart) {
           n = P.rho * DENSITY_UNIT / (mu * MP);
           T = P.P * PRESSURE_UNIT / (n * KB);
-          printf("Initial n = %e, T = %e\n", n, T);
         }
       }
     }
@@ -1336,9 +1340,12 @@ void Grid3D::Clouds(ParameterMap &pmap)
   Real p_bg, p_cl;       // background and cloud pressure
   Real mu   = 0.6;       // mean atomic weight
   int N_cl  = 1;         // number of clouds
-  Real R_cl = 0.05;     // cloud radius in code units (kpc)
+  Real R_cl = 0.0076;     // cloud radius in code units (kpc)
   Real cl_pos[N_cl][3];  // array of cloud positions
   Real r;
+
+  double metallicity_wind    = pmap.value_or("metallicity_wind", 1.0);
+  double metallicity_cloud   = pmap.value_or("metallicity_cloud", 1.0);
 
   // Multiple Cloud Setup
   // for (int nn=0; nn<N_cl; nn++) {
@@ -1349,16 +1356,17 @@ void Grid3D::Clouds(ParameterMap &pmap)
   //  cl_pos[nn][2]);
   //}
 
+
   // single centered cloud setup
   for (int nn = 0; nn < N_cl; nn++) {
-    cl_pos[nn][0] = 0.5 * H.xdglobal;
+    cl_pos[nn][0] = 0.2 * H.xdglobal;
     cl_pos[nn][1] = 0.5 * H.ydglobal;
     cl_pos[nn][2] = 0.5 * H.zdglobal;
     printf("Cloud positions: %f %f %f\n", cl_pos[nn][0], cl_pos[nn][1], cl_pos[nn][2]);
   }
 
-  n_bg   = 1e-2;
-  n_cl   = 1.0;
+  n_bg   = 1e-3;
+  n_cl   = 1e-1;
   rho_bg = n_bg * mu * MP / DENSITY_UNIT;
   rho_cl = n_cl * mu * MP / DENSITY_UNIT;
   printf("Cloud initial density: %e\n", rho_cl);
@@ -1412,10 +1420,17 @@ void Grid3D::Clouds(ParameterMap &pmap)
         C.momentum_y[id] = rho_bg * vy_bg;
         C.momentum_z[id] = rho_bg * vz_bg;
         C.Energy[id]     = p_bg / (gama - 1.0) + 0.5 * rho_bg * (vx_bg * vx_bg + vy_bg * vy_bg + vz_bg * vz_bg);
+#ifdef METALS
+        C.metal_density[id] = metallicity_wind * SOLAR_METAL_MASS_FRAC * rho_bg;
+#endif
 #ifdef DE
         C.GasEnergy[id] = p_bg / (gama - 1.0);
 #endif
-#ifdef DUST
+#ifdef SCALAR
+  #ifdef BASIC_SCALAR
+        C.basic_scalar[id] = 1.0 * rho_bg;
+  #endif
+  #ifdef DUST
         C.host[id + H.n_cells * grid_enum::dust_density] = 0.0;
 #endif
         // add clouds
@@ -1429,10 +1444,16 @@ void Grid3D::Clouds(ParameterMap &pmap)
             C.momentum_y[id] = rho_cl * vy_cl;
             C.momentum_z[id] = rho_cl * vz_cl;
             C.Energy[id]     = p_cl / (gama - 1.0) + 0.5 * rho_cl * (vx_cl * vx_cl + vy_cl * vy_cl + vz_cl * vz_cl);
+#ifdef METALS
+            C.metal_density[id] = metallicity_cloud * SOLAR_METAL_MASS_FRAC * rho_cl;
+#endif
 #ifdef DE
             C.GasEnergy[id] = p_cl / (gama - 1.0);
 #endif  // DE
 #ifdef SCALAR
+#ifdef BASIC_SCALAR
+            C.basic_scalar[id] = 0.1 * rho_bg;
+  #endif
   #ifdef DUST
             C.host[id + H.n_cells * grid_enum::dust_density] = rho_cl * 1e-2;
   #endif  // DUST
