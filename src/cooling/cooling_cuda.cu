@@ -171,7 +171,7 @@ __global__ void cooling_kernel(Real *dev_conserved, int nx, int ny, int nz, int 
     // calculate cooling rate per volume
     T = T_init;
     // call the cooling function
-    if (T < 9e5){
+    if (T < 6e5){
       cool = recipe.cool_rate(n, T);
 
       // calculate change in temperature given dt
