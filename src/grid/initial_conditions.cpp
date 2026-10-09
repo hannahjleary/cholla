@@ -1377,7 +1377,7 @@ void Grid3D::Clouds(ParameterMap &pmap)
   printf("Cloud initial density: %e\n", rho_cl);
   printf("Wind initial density: %e\n", rho_bg);
 #endif
-  vx_bg = 100 * TIME_UNIT / KPC;
+  vx_bg = 800 * TIME_UNIT / KPC;
   // vx_c  = -200*TIME_UNIT/KPC; // convert from km/s to kpc/kyr
   vx_cl = 0 * TIME_UNIT / KPC;
   vy_bg = vy_cl = 0.0;
@@ -1432,7 +1432,8 @@ void Grid3D::Clouds(ParameterMap &pmap)
   #endif
   #ifdef DUST
         C.host[id + H.n_cells * grid_enum::dust_density] = 0.0;
-#endif
+  #endif
+#endif // SCALAR
         // add clouds
         for (int nn = 0; nn < N_cl; nn++) {
           r = sqrt((x_pos - cl_pos[nn][0]) * (x_pos - cl_pos[nn][0]) +
