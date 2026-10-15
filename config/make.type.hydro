@@ -26,7 +26,7 @@ DFLAGS    += -DTEMPERATURE_FLOOR
 # Select output format
 # Can also add -DSLICES and -DPROJECTION
 OUTPUT    +=  -DOUTPUT -DHDF5
-#DFLAGS    +=  -DSLICES -DPROJECTION
+DFLAGS    +=  -DSLICES -DPROJECTION
 DFLAGS    += $(OUTPUT)
 
 #Select if the Hydro Conserved data will reside in the GPU
