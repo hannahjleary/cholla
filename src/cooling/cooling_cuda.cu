@@ -211,6 +211,7 @@ __global__ void cooling_kernel(Real *dev_conserved, int nx, int ny, int nz, int 
     // calculate final temperature
     T -= del_T;
     }
+
     // adjust value of energy based on total change in temperature
     del_T = T_init - T;  // total change in T
     E -= n * KB * del_T / ((gamma - 1.0) * ENERGY_UNIT);
