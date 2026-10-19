@@ -1340,7 +1340,7 @@ void Grid3D::Clouds(ParameterMap &pmap)
   Real p_bg, p_cl;       // background and cloud pressure
   Real mu   = 0.6;       // mean atomic weight
   int N_cl  = 1;         // number of clouds
-  Real R_cl = 0.0076;     // cloud radius in code units (kpc)
+  Real R_cl = 0.015;     // cloud radius in code units (kpc)
   Real cl_pos[N_cl][3];  // array of cloud positions
   Real r;
 
@@ -1377,7 +1377,7 @@ void Grid3D::Clouds(ParameterMap &pmap)
   printf("Cloud initial density: %e\n", rho_cl);
   printf("Wind initial density: %e\n", rho_bg);
 #endif
-  vx_bg = 0 * TIME_UNIT / KPC;
+  vx_bg = 800 * TIME_UNIT / KPC;
   // vx_c  = -200*TIME_UNIT/KPC; // convert from km/s to kpc/kyr
   vx_cl = 0 * TIME_UNIT / KPC;
   vy_bg = vy_cl = 0.0;

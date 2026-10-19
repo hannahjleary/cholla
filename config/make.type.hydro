@@ -15,10 +15,10 @@ endif
 
 # Apply a density and temperature floor
 #DFLAGS    += -DDENSITY_FLOOR
-#DFLAGS    += -DTEMPERATURE_FLOOR
+DFLAGS    += -DTEMPERATURE_FLOOR
 
 # Solve the Gas Internal Energy using a Dual Energy Formalism
-#DFLAGS    += -DDE
+DFLAGS    += -DDE
 
 # Apply reference frame shift to track cloud
 DFLAGS += -DCLOUD_TRACKING
@@ -29,7 +29,7 @@ DFLAGS += -DCLOUD_TRACKING
 # Select output format
 # Can also add -DSLICES and -DPROJECTION
 OUTPUT    ?=  -DOUTPUT -DHDF5
-DFLAGS    +=  -DSLICES -DPROJECTION
+#DFLAGS    +=  -DSLICES -DPROJECTION
 DFLAGS    += $(OUTPUT)
 
 # Enable metals
