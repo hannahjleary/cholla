@@ -1369,16 +1369,15 @@ void Grid3D::Clouds(ParameterMap &pmap)
   n_cl   = 1e-1;
   rho_bg = n_bg * mu * MP / DENSITY_UNIT;
   rho_cl = n_cl * mu * MP / DENSITY_UNIT;
-  printf("Cloud initial density: %e\n", rho_cl);
-  printf("Wind initial density: %e\n", rho_bg);
 #ifdef CLOUD_TRACKING
   rho_cl = pmap.value_or("density_cloud_init", rho_cl) / DENSITY_UNIT;
   rho_bg = pmap.value_or("density_wind_init", rho_bg) / DENSITY_UNIT;
+  n_cl = rho_cl / (mu * MP) * DENSITY_UNIT;
+  n_bg = rho_bg / (mu * MP) * DENSITY_UNIT;
+#endif
   printf("Cloud initial density: %e\n", rho_cl);
   printf("Wind initial density: %e\n", rho_bg);
-#endif
   vx_bg = 800 * TIME_UNIT / KPC;
-  // vx_c  = -200*TIME_UNIT/KPC; // convert from km/s to kpc/kyr
   vx_cl = 0 * TIME_UNIT / KPC;
   vy_bg = vy_cl = 0.0;
   vz_bg = vz_cl = 0.0;

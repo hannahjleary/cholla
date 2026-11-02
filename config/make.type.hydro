@@ -29,7 +29,7 @@ DFLAGS += -DCLOUD_TRACKING
 # Select output format
 # Can also add -DSLICES and -DPROJECTION
 OUTPUT    ?=  -DOUTPUT -DHDF5
-#DFLAGS    +=  -DSLICES -DPROJECTION
+DFLAGS    +=  -DSLICES -DPROJECTION
 DFLAGS    += $(OUTPUT)
 
 # Enable metals
