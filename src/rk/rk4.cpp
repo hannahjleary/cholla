@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstring>
 #include <vector>
+#include <cstdint>
 
 #include "../utils/error_handling.h"
 
