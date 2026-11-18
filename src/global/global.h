@@ -95,12 +95,12 @@ typedef double Real;
 #define INITIAL_FRACTION_HEII     9.59999999903e-15
 #define INITIAL_FRACTION_HEIII    9.59999999903e-18
 #define INITIAL_FRACTION_ELECTRON 1.53965115054e-4
-#define INITIAL_FRACTION_METAL    1.00000000000e-10   
+#define INITIAL_FRACTION_METAL    1.00000000000e-10
 
 // Solar Metal Mass Fraction
-#define SOLAR_METAL_MASS_FRAC     0.01295
-#define HYDROGEN_FRAC_BY_MASS     0.716 
-//TODO: this HYDROGEN_FRAC_BY_MASS constant is currently incompatible with the YHe parameter (cosmology only)
+#define SOLAR_METAL_MASS_FRAC 0.01295
+#define HYDROGEN_FRAC_BY_MASS 0.716
+// TODO: this HYDROGEN_FRAC_BY_MASS constant is currently incompatible with the YHe parameter (cosmology only)
 
 // Default Particles Compiler Flags
 #define PARTICLES_LONG_INTS
@@ -278,7 +278,8 @@ struct Parameters {
   int zug_bcnd;
 #endif /*MPI_CHOLLA*/
   char custom_bcnd[MAXLEN];
-  char indir[MAXLEN];  // Folder to load Initial conditions from
+  char indir[MAXLEN];   // Folder to load Initial conditions from
+  char outdir[MAXLEN];  // Folder where output data is written
   Real rho;
   Real vx;
   Real vy;
@@ -325,8 +326,8 @@ struct Parameters {
   std::uint_fast64_t prng_seed = 0;
 #endif  // PARTICLES
 
-#ifdef CHEMISTRY_GPU
-  Real YHe;
+#if defined(CHEMISTRY_GPU) || defined(COSMOLOGY)
+  Real YHe;  // helium mass fraction
 #endif
 #ifdef COSMOLOGY
   Real H0;
@@ -339,9 +340,8 @@ struct Parameters {
   Real Init_redshift;
   Real End_redshift;
   Real T_init;
-  unsigned long long cosmoics_seed;  // Cosmological ICs seed
+  unsigned long long cosmo_ics_seed;  // Cosmological ICs seed
   char cosmo_ics_pk_file[MAXLEN];
-  Real YHe;            // helium mass fraction
   Real xHp_ion_init;   // hydrogen ionization fraction
   Real xHep_ion_init;  // helium ionization fraction
 
